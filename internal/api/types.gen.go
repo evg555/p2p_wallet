@@ -23,6 +23,14 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+// LoginResponse defines model for LoginResponse.
+type LoginResponse struct {
+	Id       int64  `json:"id"`
+	LastName string `json:"last_name"`
+	Login    string `json:"login"`
+	Name     string `json:"name"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	LastName string `json:"last_name"`

@@ -22,9 +22,6 @@ type ServerInterface interface {
 	// Регистрация пользователя
 	// (POST /users/register)
 	RegisterUser(w http.ResponseWriter, r *http.Request)
-	// Получение информации о пользователе по id
-	// (GET /users/{id})
-	GetUserById(w http.ResponseWriter, r *http.Request, id UserId)
 	// Выход из системы
 	// (POST /users/{id}/logout)
 	LogoutUser(w http.ResponseWriter, r *http.Request, id UserId)
@@ -43,12 +40,6 @@ func (_ Unimplemented) LoginUser(w http.ResponseWriter, r *http.Request) {
 // Регистрация пользователя
 // (POST /users/register)
 func (_ Unimplemented) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Получение информации о пользователе по id
-// (GET /users/{id})
-func (_ Unimplemented) GetUserById(w http.ResponseWriter, r *http.Request, id UserId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -86,37 +77,6 @@ func (siw *ServerInterfaceWrapper) RegisterUser(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RegisterUser(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetUserById operation middleware
-func (siw *ServerInterfaceWrapper) GetUserById(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// ------------- Path parameter "id" -------------
-	var id UserId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
-		return
-	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, SessionCookieAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetUserById(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -277,9 +237,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/users/register", wrapper.RegisterUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/users/{id}", wrapper.GetUserById)
-	})
-	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/users/{id}/logout", wrapper.LogoutUser)
 	})
 
@@ -299,7 +256,7 @@ type LoginUser200ResponseHeaders struct {
 }
 
 type LoginUser200JSONResponse struct {
-	Body    UserResponse
+	Body    LoginResponse
 	Headers LoginUser200ResponseHeaders
 }
 
@@ -373,59 +330,6 @@ func (response RegisterUser409JSONResponse) VisitRegisterUserResponse(w http.Res
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUserByIdRequestObject struct {
-	Id UserId `json:"id"`
-}
-
-type GetUserByIdResponseObject interface {
-	VisitGetUserByIdResponse(w http.ResponseWriter) error
-}
-
-type GetUserById200JSONResponse UserResponse
-
-func (response GetUserById200JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetUserById400JSONResponse ErrorResponse
-
-func (response GetUserById400JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetUserById401JSONResponse ErrorResponse
-
-func (response GetUserById401JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetUserById403JSONResponse ErrorResponse
-
-func (response GetUserById403JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetUserById404JSONResponse ErrorResponse
-
-func (response GetUserById404JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type LogoutUserRequestObject struct {
 	Id UserId `json:"id"`
 }
@@ -492,9 +396,6 @@ type StrictServerInterface interface {
 	// Регистрация пользователя
 	// (POST /users/register)
 	RegisterUser(ctx context.Context, request RegisterUserRequestObject) (RegisterUserResponseObject, error)
-	// Получение информации о пользователе по id
-	// (GET /users/{id})
-	GetUserById(ctx context.Context, request GetUserByIdRequestObject) (GetUserByIdResponseObject, error)
 	// Выход из системы
 	// (POST /users/{id}/logout)
 	LogoutUser(ctx context.Context, request LogoutUserRequestObject) (LogoutUserResponseObject, error)
@@ -584,32 +485,6 @@ func (sh *strictHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RegisterUserResponseObject); ok {
 		if err := validResponse.VisitRegisterUserResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetUserById operation middleware
-func (sh *strictHandler) GetUserById(w http.ResponseWriter, r *http.Request, id UserId) {
-	var request GetUserByIdRequestObject
-
-	request.Id = id
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetUserById(ctx, request.(GetUserByIdRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetUserById")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetUserByIdResponseObject); ok {
-		if err := validResponse.VisitGetUserByIdResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

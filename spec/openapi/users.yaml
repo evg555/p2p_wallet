@@ -63,7 +63,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: '#/components/schemas/LoginResponse'
         '400':
           description: Unauthorized
           content:
@@ -121,47 +121,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /users/{id}:
-    get:
-      tags: [Users]
-      summary: Получение информации о пользователе по id
-      operationId: getUserById
-      security:
-        - SessionCookieAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
           content:
             application/json:
               schema:
@@ -246,6 +205,24 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    LoginResponse:
+      type: object
+      required:
+        - id
+        - login
+        - name
+        - last_name
+      properties:
+        id:
+          type: integer
+          format: int64
+        login:
+          type: string
+        name:
+          type: string
+        last_name:
+          type: string
 
     ErrorResponse:
       type: object
