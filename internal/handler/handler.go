@@ -13,15 +13,10 @@ import (
 	"p2p_wallet/internal/errs"
 )
 
-var defaultSessionID = "abc123"
-
-type ctxKey string
-
 type Service interface {
 	Register(ctx context.Context, input api.RegisterRequest) (*domain.User, error)
-	Login(ctx context.Context, input api.LoginRequest) (*domain.User, error)
+	Login(ctx context.Context, input api.LoginRequest) (*domain.AuthResult, error)
 	Logout(ctx context.Context, id int64) error
-	GetUser(ctx context.Context, id int64) (*domain.User, error)
 }
 
 type handler struct {
@@ -47,7 +42,7 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.userSrv.Login(r.Context(), req)
+	res, err := h.userSrv.Login(r.Context(), req)
 	if err != nil {
 		code := "cannot login user"
 		switch true {
@@ -71,17 +66,16 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := api.LoginUser200JSONResponse{
-		Body: api.UserResponse{
-			CreatedAt: user.CreatedAt,
-			Id:        user.ID,
-			LastName:  user.LastName,
-			Login:     user.Login,
-			Name:      user.FirstName,
+		Body: api.LoginResponse{
+			Id:       res.UserID,
+			LastName: res.UserLastName,
+			Login:    res.UserLogin,
+			Name:     res.UserName,
 		},
 		Headers: api.LoginUser200ResponseHeaders{
 			SetCookie: (&http.Cookie{
-				Name:     "session_id",
-				Value:    defaultSessionID,
+				Name:     domain.SessionKey,
+				Value:    res.SessionID,
 				Path:     "/",
 				HttpOnly: true,
 				SameSite: http.SameSiteLaxMode,
@@ -132,68 +126,6 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	_ = resp.VisitRegisterUserResponse(w)
 }
 
-func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.UserId) {
-	if id <= 0 {
-		resp := api.GetUserById400JSONResponse{
-			Code:    "invalid user id",
-			Message: "id must be greater than zero",
-		}
-		_ = resp.VisitGetUserByIdResponse(w)
-		return
-	}
-
-	code := "cannot get user"
-
-	c, err := r.Cookie("session_id")
-	if err != nil || c.Value == "" {
-		resp := api.GetUserById401JSONResponse{
-			Code:    code,
-			Message: "user session is empty",
-		}
-		_ = resp.VisitGetUserByIdResponse(w)
-		return
-	}
-
-	ctx := context.WithValue(r.Context(), ctxKey("sessionID"), c.Value)
-
-	user, err := h.userSrv.GetUser(ctx, id)
-	if err != nil {
-		switch true {
-		case errors.Is(err, errs.ErrUserNotFound):
-			resp := api.GetUserById404JSONResponse{
-				Code:    code,
-				Message: err.Error(),
-			}
-			_ = resp.VisitGetUserByIdResponse(w)
-		case errors.Is(err, errs.ErrSessionNotFound):
-			resp := api.GetUserById401JSONResponse{
-				Code:    code,
-				Message: err.Error(),
-			}
-			_ = resp.VisitGetUserByIdResponse(w)
-		case errors.Is(err, errs.ErrAccessDenied):
-			resp := api.GetUserById403JSONResponse{
-				Code:    code,
-				Message: err.Error(),
-			}
-			_ = resp.VisitGetUserByIdResponse(w)
-		default:
-			_ = response500Error(w, code, err)
-		}
-		return
-	}
-
-	resp := api.GetUserById200JSONResponse{
-		CreatedAt: user.CreatedAt,
-		Id:        user.ID,
-		LastName:  user.LastName,
-		Login:     user.Login,
-		Name:      user.FirstName,
-		UpdatedAt: user.UpdatedAt,
-	}
-	_ = resp.VisitGetUserByIdResponse(w)
-}
-
 func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.UserId) {
 	if id <= 0 {
 		resp := api.LogoutUser400JSONResponse{
@@ -206,7 +138,7 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 
 	code := "cannot logout user"
 
-	c, err := r.Cookie("session_id")
+	c, err := r.Cookie(domain.SessionKey)
 	if err != nil || c.Value == "" {
 		resp := api.LogoutUser401JSONResponse{
 			Code:    code,
@@ -216,7 +148,7 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), ctxKey("sessionID"), c.Value)
+	ctx := context.WithValue(r.Context(), domain.CtxKey(domain.SessionKey), c.Value)
 
 	err = h.userSrv.Logout(ctx, id)
 	if err != nil {
@@ -248,7 +180,7 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 	resp := api.LogoutUser204Response{
 		Headers: api.LogoutUser204ResponseHeaders{
 			SetCookie: (&http.Cookie{
-				Name:     "session_id",
+				Name:     domain.SessionKey,
 				Value:    "",
 				Path:     "/",
 				HttpOnly: true,

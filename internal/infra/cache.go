@@ -67,6 +67,13 @@ func (c *cache) Set(id int64, v any, ttl time.Duration) {
 	c.data[id] = e
 }
 
+func (c *cache) Delete(id int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.data, id)
+}
+
 func (e entry) isExpired() bool {
 	return !e.expiresAt.IsZero() && time.Now().After(e.expiresAt)
 }

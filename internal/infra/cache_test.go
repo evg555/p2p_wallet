@@ -4,6 +4,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCacheSetWithTTLExpiresOnGetAll(t *testing.T) {
@@ -13,12 +15,8 @@ func TestCacheSetWithTTLExpiresOnGetAll(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 
 	vals, err := c.GetAll()
-	if err != nil {
-		t.Fatalf("get all: %v", err)
-	}
-	if len(vals) != 0 {
-		t.Fatalf("expected no values after expiration, got %d", len(vals))
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(vals))
 }
 
 func TestCacheWithoutTTLDoesNotExpire(t *testing.T) {
@@ -28,12 +26,8 @@ func TestCacheWithoutTTLDoesNotExpire(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 
 	got, err := c.Get(1)
-	if err != nil {
-		t.Fatalf("get: %v", err)
-	}
-	if got != "value" {
-		t.Fatalf("unexpected value: got %v want %v", got, "value")
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "value", got)
 }
 
 func TestCacheConcurrentAccess(t *testing.T) {
@@ -131,4 +125,18 @@ func TestCacheConcurrentAccessWithTTL(t *testing.T) {
 	if len(vals) != 0 {
 		t.Fatalf("expected all values to expire, got %d", len(vals))
 	}
+}
+
+func TestCacheDelete(t *testing.T) {
+	c := NewCache()
+	c.Set(1, "value", 10*time.Millisecond)
+
+	val, err := c.Get(1)
+	assert.NoError(t, err)
+	assert.Equal(t, val, "value")
+
+	c.Delete(1)
+	val, err = c.Get(1)
+	assert.NoError(t, err)
+	assert.Nil(t, val)
 }

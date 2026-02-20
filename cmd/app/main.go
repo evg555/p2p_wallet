@@ -11,22 +11,23 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/go-chi/chi/v5"
-	middleware "github.com/oapi-codegen/nethttp-middleware"
-
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/handler"
 	"p2p_wallet/internal/repository"
 	"p2p_wallet/internal/service"
+
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/go-chi/chi/v5"
+	middleware "github.com/oapi-codegen/nethttp-middleware"
 )
 
 var srvAddress = "localhost:8080"
 
 func main() {
-	repo := repository.New()
-	userSrv := service.New(repo)
+	userRepo := repository.NewUserRepo()
+	sessionRepo := repository.NewSessionRepo()
+	userSrv := service.New(userRepo, sessionRepo)
 	h := handler.New(userSrv)
 	router := buildRouter(h)
 

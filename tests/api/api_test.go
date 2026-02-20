@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"p2p_wallet/internal/api"
+	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/handler"
 	"p2p_wallet/internal/repository"
 	"p2p_wallet/internal/service"
@@ -16,8 +17,9 @@ import (
 
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
-	repo := repository.New()
-	srv := service.New(repo)
+	userRepo := repository.NewUserRepo()
+	sessionRepo := repository.NewSessionRepo()
+	srv := service.New(userRepo, sessionRepo)
 	h := handler.New(srv)
 	return api.Handler(h)
 }
@@ -90,7 +92,7 @@ func TestUserFlowE2E(t *testing.T) {
 
 	var sessionCookie *http.Cookie
 	for _, c := range cookies {
-		if c.Name == "session_id" && c.Value != "" {
+		if c.Name == domain.SessionKey && c.Value != "" {
 			sessionCookie = c
 			break
 		}
@@ -99,50 +101,15 @@ func TestUserFlowE2E(t *testing.T) {
 		t.Fatalf("session cookie is missing or empty: %+v", cookies)
 	}
 
-	getRec := performRequest(
-		t,
-		h,
-		http.MethodGet,
-		"/users/"+stringifyInt64(registered.Id),
-		nil,
-		sessionCookie,
-	)
-	if getRec.Code != http.StatusOK {
-		t.Fatalf("unexpected get user status: got %d want %d", getRec.Code, http.StatusOK)
-	}
-
-	var gotUser api.UserResponse
-	if err := json.NewDecoder(getRec.Body).Decode(&gotUser); err != nil {
-		t.Fatalf("decode get user response: %v", err)
-	}
-	if gotUser.Id != registered.Id || gotUser.Login != "u1" {
-		t.Fatalf("unexpected get user response body: %+v", gotUser)
-	}
-	if gotUser.CreatedAt.IsZero() {
-		t.Fatal("expected non-zero created_at in get user response")
-	}
-
 	logoutRec := performRequest(
 		t,
 		h,
 		http.MethodPost,
-		"/users/"+stringifyInt64(registered.Id)+"/logout",
+		"/users/"+strconv.FormatInt(registered.Id, 10)+"/logout",
 		nil,
 		sessionCookie,
 	)
 	if logoutRec.Code != http.StatusNoContent {
 		t.Fatalf("unexpected logout status: got %d want %d", logoutRec.Code, http.StatusNoContent)
 	}
-}
-
-func TestGetUserByIDRequiresCookieE2E(t *testing.T) {
-	h := newTestHandler(t)
-	rec := performRequest(t, h, http.MethodGet, "/users/1", nil)
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("unexpected status: got %d want %d", rec.Code, http.StatusUnauthorized)
-	}
-}
-
-func stringifyInt64(v int64) string {
-	return strconv.FormatInt(v, 10)
 }
