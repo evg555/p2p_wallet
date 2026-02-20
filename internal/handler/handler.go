@@ -7,12 +7,21 @@ import (
 	"p2p_wallet/internal/api"
 )
 
-type handler struct{}
+type Service interface {
+	Register()
+	Login()
+	Logout()
+	GetUser()
+}
+
+type handler struct {
+	userSrv Service
+}
 
 var _ api.ServerInterface = (*handler)(nil)
 
-func New() *handler {
-	return &handler{}
+func New(srv Service) *handler {
+	return &handler{userSrv: srv}
 }
 
 func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
