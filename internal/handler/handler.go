@@ -53,8 +53,8 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 			Message: err.Error(),
 		}
 
-		_ = json.NewEncoder(w).Encode(resp)
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
@@ -66,8 +66,6 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		Name:      user.FirstName,
 	}
 
-	_ = json.NewEncoder(w).Encode(resp)
-
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
 		Value:    defaultSessionID,
@@ -77,7 +75,8 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   3600,
 	})
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -102,8 +101,8 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 			Message: err.Error(),
 		}
 
-		_ = json.NewEncoder(w).Encode(resp)
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
@@ -115,8 +114,8 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		Name:      user.FirstName,
 	}
 
-	_ = json.NewEncoder(w).Encode(resp)
 	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.UserId) {
@@ -152,8 +151,8 @@ func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.Use
 			Message: err.Error(),
 		}
 
-		_ = json.NewEncoder(w).Encode(resp)
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
@@ -166,8 +165,8 @@ func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.Use
 		UpdatedAt: user.UpdatedAt,
 	}
 
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(resp)
-	w.WriteHeader(http.StatusCreated)
 }
 
 func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.UserId) {
@@ -203,8 +202,8 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 			Message: err.Error(),
 		}
 
-		_ = json.NewEncoder(w).Encode(resp)
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 

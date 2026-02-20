@@ -47,17 +47,23 @@ tasks:
       - { task: gen-api }
       - git diff --exit-code -- internal/api/*.gen.go
 
-  test:
-    desc: Run test
+  unit-test:
+    desc: Run unit tests
     cmds:
-      - go test ./...
+      - go test ./internal/...
+
+  api-test:
+    desc: Run api teste
+    cmds:
+      - go test -v ./tests/api/...
 
   check:
     desc: Check stability
     cmds:
       - { task: check-generated }
       - { task: lint }
-      - { task: test }
+      - { task: unit-test }
+      - { task: api-test }
       - { task: build }
 
   run:
