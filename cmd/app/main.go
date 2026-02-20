@@ -12,14 +12,16 @@ import (
 
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/handler"
+
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
+	middleware "github.com/oapi-codegen/nethttp-middleware"
 )
 
 var srvAddress = "localhost:8080"
 
 func main() {
-	h := handler.New()
-	router := api.Handler(h)
-
+	router := buildRouter()
 	srv := &http.Server{
 		Addr:              srvAddress,
 		Handler:           router,
@@ -48,4 +50,21 @@ func main() {
 	}
 
 	log.Printf("http server stopped")
+}
+
+func buildRouter() http.Handler {
+	loader := openapi3.NewLoader()
+	swagger, err := loader.LoadFromFile("spec/openapi/users.yaml")
+	if err != nil {
+		log.Fatalf("load openapi: %v", err)
+	}
+	if err = swagger.Validate(context.Background()); err != nil {
+		log.Fatalf("validate openapi: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Use(middleware.OapiRequestValidator(swagger))
+
+	h := handler.New()
+	return api.HandlerFromMux(h, r)
 }

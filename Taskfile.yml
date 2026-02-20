@@ -46,7 +46,21 @@ tasks:
     cmds:
       - go test ./...
 
+  check:
+    desc: Check stability
+    cmds:
+      - { task: lint }
+      - { task: test }
+      - { task: build }
+
   run:
     desc: Run application
+    deps:
+      - build
     cmds:
-      - GOBIN="$(pwd)/bin" go run cmd/app/main.go -o app
+      - ./bin/app
+
+  build:
+    desc: Build application
+    cmds:
+      - go build -o ./bin/app cmd/app/main.go
