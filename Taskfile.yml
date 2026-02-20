@@ -1,13 +1,28 @@
 version: '3'
 
 tasks:
+  install-deps:
+    desc: Install dependencies to ./bin if missing
+    cmds:
+      - { task: install-lint }
+      - { task: install-oapi-gen }
+
   install-lint:
     desc: Install golangci-lint to ./bin if missing
     cmds:
       - mkdir -p bin
       - |
         if [ ! -x ./bin/golangci-lint ]; then
-          GOBIN="$(pwd)/bin" go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          GOBIN="$(pwd)/bin" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1
+        fi
+
+  install-oapi-gen:
+    desc: Install oapi-codegen to ./bin if missing
+    cmds:
+      - mkdir -p bin
+      - |
+        if [ ! -x ./bin/oapi-codegen ]; then
+          GOBIN="$(pwd)/bin" go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
         fi
 
   lint:
