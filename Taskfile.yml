@@ -42,6 +42,11 @@ tasks:
       - ./bin/oapi-codegen -config spec/openapi/oapi-codegen.server.yaml spec/openapi/users.yaml
 
   test:
-    desc: Run tets
+    desc: Run test
     cmds:
       - go test ./...
+
+  run:
+    desc: Run application
+    cmds:
+      - GOBIN="$(pwd)/bin" go run cmd/app/main.go -o app
