@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
@@ -29,6 +30,7 @@ func (s *service) Register(ctx context.Context, input api.RegisterRequest) (*dom
 		Password:  domain.EncodePassword(input.Password),
 		FirstName: input.Name,
 		LastName:  input.LastName,
+		CreatedAt: time.Now().UTC(),
 	}
 
 	user.NewUserID()
@@ -46,7 +48,7 @@ func (s *service) Login(ctx context.Context, input api.LoginRequest) (*domain.Us
 		return nil, errs.ErrUserNotFound
 	}
 
-	if domain.CheckPassword(user.Password, input.Password) {
+	if !domain.CheckPassword(input.Password, user.Password) {
 		return nil, errs.ErrPasswordMismatch
 	}
 

@@ -7,4 +7,6 @@ import (
 var (
 	ErrUserNotFound     = errors.New("user not found")
 	ErrPasswordMismatch = errors.New("password mismatch")
+	ErrAccessDenied     = errors.New("access denied")
+	ErrUserAlreadyExist = errors.New("user already exist")
 )

@@ -41,9 +41,9 @@ func (r repo) GetByLogin(ctx context.Context, login string) (*domain.User, error
 	}
 
 	for _, v := range vals {
-		user := v.(domain.User)
+		user := v.(*domain.User)
 		if user.Login == login {
-			return &user, nil
+			return user, nil
 		}
 	}
 

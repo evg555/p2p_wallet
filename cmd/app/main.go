@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/go-chi/chi/v5"
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 
@@ -69,7 +71,28 @@ func buildRouter(h api.ServerInterface) http.Handler {
 	}
 
 	r := chi.NewRouter()
-	r.Use(middleware.OapiRequestValidator(swagger))
+	r.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+		Options: openapi3filter.Options{
+			AuthenticationFunc: authenticateRequest,
+		},
+	}))
 
 	return api.HandlerFromMux(h, r)
+}
+
+func authenticateRequest(_ context.Context, ai *openapi3filter.AuthenticationInput) error {
+	if ai == nil || ai.RequestValidationInput == nil || ai.RequestValidationInput.Request == nil {
+		return errors.New("invalid authentication input")
+	}
+
+	switch ai.SecuritySchemeName {
+	case "SessionCookieAuth":
+		cookie, err := ai.RequestValidationInput.Request.Cookie("session_id")
+		if err != nil || cookie == nil || cookie.Value == "" {
+			return errors.New("missing session_id cookie")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported security scheme: %s", ai.SecuritySchemeName)
+	}
 }

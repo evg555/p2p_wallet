@@ -2,45 +2,23 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"net/http/httptest"
-	"testing"
-	"time"
-
 	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"testing"
 
 	"p2p_wallet/internal/api"
-	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/handler"
+	"p2p_wallet/internal/repository"
+	"p2p_wallet/internal/service"
 )
 
-type userServiceStub struct {
-	registerFn func(ctx context.Context, input api.RegisterRequest) (*domain.User, error)
-	loginFn    func(ctx context.Context, input api.LoginRequest) (*domain.User, error)
-	logoutFn   func(ctx context.Context, id int64) error
-	getUserFn  func(ctx context.Context, id int64) (*domain.User, error)
-}
-
-func (s *userServiceStub) Register(ctx context.Context, input api.RegisterRequest) (*domain.User, error) {
-	return s.registerFn(ctx, input)
-}
-
-func (s *userServiceStub) Login(ctx context.Context, input api.LoginRequest) (*domain.User, error) {
-	return s.loginFn(ctx, input)
-}
-
-func (s *userServiceStub) Logout(ctx context.Context, id int64) error {
-	return s.logoutFn(ctx, id)
-}
-
-func (s *userServiceStub) GetUser(ctx context.Context, id int64) (*domain.User, error) {
-	return s.getUserFn(ctx, id)
-}
-
-func newTestHandler(t *testing.T, svc *userServiceStub) http.Handler {
+func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
-	h := handler.New(svc)
+	repo := repository.New()
+	srv := service.New(repo)
+	h := handler.New(srv)
 	return api.Handler(h)
 }
 
@@ -64,158 +42,107 @@ func performRequest(
 	return rec
 }
 
-func TestRegisterUser(t *testing.T) {
-	now := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
-	h := newTestHandler(t, &userServiceStub{
-		registerFn: func(ctx context.Context, input api.RegisterRequest) (*domain.User, error) {
-			return &domain.User{
-				ID:        1,
-				Login:     input.Login,
-				FirstName: input.Name,
-				LastName:  input.LastName,
-				CreatedAt: now,
-			}, nil
-		},
-		loginFn:   func(ctx context.Context, input api.LoginRequest) (*domain.User, error) { return nil, nil },
-		logoutFn:  func(ctx context.Context, id int64) error { return nil },
-		getUserFn: func(ctx context.Context, id int64) (*domain.User, error) { return nil, nil },
-	})
-	rec := performRequest(
+func TestUserFlowE2E(t *testing.T) {
+	h := newTestHandler(t)
+
+	registerRec := performRequest(
 		t,
 		h,
 		http.MethodPost,
 		"/users/register",
 		[]byte(`{"login":"u1","password":"p1","name":"John","last_name":"Doe"}`),
 	)
-
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("unexpected status: got %d want %d", rec.Code, http.StatusCreated)
+	if registerRec.Code != http.StatusCreated {
+		t.Fatalf("unexpected register status: got %d want %d", registerRec.Code, http.StatusCreated)
 	}
 
-	var got api.UserResponse
-	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
-		t.Fatalf("decode response: %v", err)
+	var registered api.UserResponse
+	if err := json.NewDecoder(registerRec.Body).Decode(&registered); err != nil {
+		t.Fatalf("decode register response: %v", err)
 	}
-	if got.Id != 1 || got.Login != "u1" || got.Name != "John" || got.LastName != "Doe" {
-		t.Fatalf("unexpected response body: %+v", got)
+	if registered.Id <= 0 {
+		t.Fatalf("unexpected user id: %d", registered.Id)
 	}
-}
+	if registered.CreatedAt.IsZero() {
+		t.Fatal("expected non-zero created_at after register")
+	}
+	if registered.Login != "u1" || registered.Name != "John" || registered.LastName != "Doe" {
+		t.Fatalf("unexpected register response body: %+v", registered)
+	}
 
-func TestLoginUserSetsCookie(t *testing.T) {
-	now := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
-	h := newTestHandler(t, &userServiceStub{
-		registerFn: func(ctx context.Context, input api.RegisterRequest) (*domain.User, error) { return nil, nil },
-		loginFn: func(ctx context.Context, input api.LoginRequest) (*domain.User, error) {
-			return &domain.User{
-				ID:        2,
-				Login:     input.Login,
-				FirstName: "Jane",
-				LastName:  "Roe",
-				CreatedAt: now,
-			}, nil
-		},
-		logoutFn:  func(ctx context.Context, id int64) error { return nil },
-		getUserFn: func(ctx context.Context, id int64) (*domain.User, error) { return nil, nil },
-	})
-	rec := performRequest(
+	loginRec := performRequest(
 		t,
 		h,
 		http.MethodPost,
 		"/users/login",
-		[]byte(`{"login":"u2","password":"p2"}`),
+		[]byte(`{"login":"u1","password":"p1"}`),
 	)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("unexpected status: got %d want %d", rec.Code, http.StatusOK)
+	if loginRec.Code != http.StatusOK {
+		t.Fatalf("unexpected login status: got %d want %d", loginRec.Code, http.StatusOK)
 	}
 
-	resp := rec.Result()
-	defer resp.Body.Close()
-	cookies := resp.Cookies()
+	loginResp := loginRec.Result()
+	defer loginResp.Body.Close()
+	cookies := loginResp.Cookies()
 	if len(cookies) == 0 {
-		t.Fatal("expected session cookie to be set")
+		t.Fatal("expected session cookie after login")
 	}
-	if cookies[0].Name != "session_id" || cookies[0].Value == "" {
-		t.Fatalf("unexpected cookie: %+v", cookies[0])
+
+	var sessionCookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == "session_id" && c.Value != "" {
+			sessionCookie = c
+			break
+		}
+	}
+	if sessionCookie == nil {
+		t.Fatalf("session cookie is missing or empty: %+v", cookies)
+	}
+
+	getRec := performRequest(
+		t,
+		h,
+		http.MethodGet,
+		"/users/"+stringifyInt64(registered.Id),
+		nil,
+		sessionCookie,
+	)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("unexpected get user status: got %d want %d", getRec.Code, http.StatusOK)
+	}
+
+	var gotUser api.UserResponse
+	if err := json.NewDecoder(getRec.Body).Decode(&gotUser); err != nil {
+		t.Fatalf("decode get user response: %v", err)
+	}
+	if gotUser.Id != registered.Id || gotUser.Login != "u1" {
+		t.Fatalf("unexpected get user response body: %+v", gotUser)
+	}
+	if gotUser.CreatedAt.IsZero() {
+		t.Fatal("expected non-zero created_at in get user response")
+	}
+
+	logoutRec := performRequest(
+		t,
+		h,
+		http.MethodPost,
+		"/users/"+stringifyInt64(registered.Id)+"/logout",
+		nil,
+		sessionCookie,
+	)
+	if logoutRec.Code != http.StatusNoContent {
+		t.Fatalf("unexpected logout status: got %d want %d", logoutRec.Code, http.StatusNoContent)
 	}
 }
 
-func TestGetUserByIDRequiresCookie(t *testing.T) {
-	h := newTestHandler(t, &userServiceStub{
-		registerFn: func(ctx context.Context, input api.RegisterRequest) (*domain.User, error) { return nil, nil },
-		loginFn:    func(ctx context.Context, input api.LoginRequest) (*domain.User, error) { return nil, nil },
-		logoutFn:   func(ctx context.Context, id int64) error { return nil },
-		getUserFn:  func(ctx context.Context, id int64) (*domain.User, error) { return nil, nil },
-	})
+func TestGetUserByIDRequiresCookieE2E(t *testing.T) {
+	h := newTestHandler(t)
 	rec := performRequest(t, h, http.MethodGet, "/users/1", nil)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("unexpected status: got %d want %d", rec.Code, http.StatusUnauthorized)
 	}
 }
 
-func TestGetUserByID(t *testing.T) {
-	now := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
-	h := newTestHandler(t, &userServiceStub{
-		registerFn: func(ctx context.Context, input api.RegisterRequest) (*domain.User, error) { return nil, nil },
-		loginFn:    func(ctx context.Context, input api.LoginRequest) (*domain.User, error) { return nil, nil },
-		logoutFn:   func(ctx context.Context, id int64) error { return nil },
-		getUserFn: func(ctx context.Context, id int64) (*domain.User, error) {
-			return &domain.User{
-				ID:        id,
-				Login:     "u3",
-				FirstName: "Alice",
-				LastName:  "Smith",
-				CreatedAt: now,
-			}, nil
-		},
-	})
-	rec := performRequest(
-		t,
-		h,
-		http.MethodGet,
-		"/users/3",
-		nil,
-		&http.Cookie{Name: "session_id", Value: "session-1"},
-	)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("unexpected status: got %d want %d", rec.Code, http.StatusOK)
-	}
-
-	var got api.UserResponse
-	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if got.Id != 3 || got.Login != "u3" {
-		t.Fatalf("unexpected response body: %+v", got)
-	}
-}
-
-func TestLogoutUser(t *testing.T) {
-	called := false
-	h := newTestHandler(t, &userServiceStub{
-		registerFn: func(ctx context.Context, input api.RegisterRequest) (*domain.User, error) { return nil, nil },
-		loginFn:    func(ctx context.Context, input api.LoginRequest) (*domain.User, error) { return nil, nil },
-		logoutFn: func(ctx context.Context, id int64) error {
-			called = true
-			if id != 7 {
-				t.Fatalf("unexpected id: got %d want %d", id, 7)
-			}
-			return nil
-		},
-		getUserFn: func(ctx context.Context, id int64) (*domain.User, error) { return nil, nil },
-	})
-	rec := performRequest(
-		t,
-		h,
-		http.MethodPost,
-		"/users/7/logout",
-		nil,
-		&http.Cookie{Name: "session_id", Value: "session-7"},
-	)
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("unexpected status: got %d want %d", rec.Code, http.StatusNoContent)
-	}
-	if !called {
-		t.Fatal("expected logout service to be called")
-	}
+func stringifyInt64(v int64) string {
+	return strconv.FormatInt(v, 10)
 }

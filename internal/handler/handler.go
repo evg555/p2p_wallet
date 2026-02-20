@@ -4,10 +4,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/errs"
 )
 
 var defaultSessionID = "abc123"
@@ -49,11 +51,19 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.userSrv.Login(r.Context(), req)
 	if err != nil {
 		resp := api.ErrorResponse{
-			Code:    "cannot login user",
+			Code:    "user cannot login",
 			Message: err.Error(),
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		switch true {
+		case errors.Is(err, errs.ErrUserNotFound):
+			w.WriteHeader(http.StatusNotFound)
+		case errors.Is(err, errs.ErrPasswordMismatch):
+			w.WriteHeader(http.StatusUnauthorized)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
 		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
@@ -101,7 +111,13 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 			Message: err.Error(),
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		switch true {
+		case errors.Is(err, errs.ErrUserAlreadyExist):
+			w.WriteHeader(http.StatusConflict)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
 		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
@@ -151,7 +167,15 @@ func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.Use
 			Message: err.Error(),
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		switch true {
+		case errors.Is(err, errs.ErrUserNotFound):
+			w.WriteHeader(http.StatusNotFound)
+		case errors.Is(err, errs.ErrAccessDenied):
+			w.WriteHeader(http.StatusUnauthorized)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
 		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
@@ -184,7 +208,7 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 	c, err := r.Cookie("session_id")
 	if err != nil {
 		resp := api.ErrorResponse{
-			Code:    "authorization failed",
+			Code:    "cannot logout user",
 			Message: "user session is empty",
 		}
 
@@ -198,8 +222,19 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 	err = h.userSrv.Logout(ctx, id)
 	if err != nil {
 		resp := api.ErrorResponse{
-			Code:    "cannot get user",
+			Code:    "cannot logout user",
 			Message: err.Error(),
+		}
+
+		switch true {
+		case errors.Is(err, errs.ErrUserNotFound):
+			w.WriteHeader(http.StatusNotFound)
+		case errors.Is(err, errs.ErrPasswordMismatch):
+			w.WriteHeader(http.StatusUnauthorized)
+		case errors.Is(err, errs.ErrAccessDenied):
+			w.WriteHeader(http.StatusForbidden)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 
 		w.WriteHeader(http.StatusInternalServerError)
