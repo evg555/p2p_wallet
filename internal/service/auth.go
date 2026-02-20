@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var sessionTTL = 1 * time.Hour
+
 type UserRepo interface {
 	Save(ctx context.Context, user *domain.User) (*domain.User, error)
 	GetByLogin(ctx context.Context, login string) (*domain.User, error)
@@ -65,7 +67,7 @@ func (s *service) Login(ctx context.Context, input api.LoginRequest) (*domain.Au
 	}
 
 	newSessionID, _ := uuid.NewV7()
-	s.sessionRepo.Set(user.ID, newSessionID.String(), 24*time.Hour)
+	s.sessionRepo.Set(user.ID, newSessionID.String(), sessionTTL)
 
 	return &domain.AuthResult{
 		UserID:       user.ID,

@@ -6,6 +6,7 @@ tasks:
     cmds:
       - { task: install-lint }
       - { task: install-oapi-gen }
+      - { task: install-mockery }
 
   install-lint:
     desc: Install golangci-lint to ./bin if missing
@@ -25,6 +26,15 @@ tasks:
           GOBIN="$(pwd)/bin" go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
         fi
 
+  install-mockery:
+    desc: Install mockery to ./bin if missing
+    cmds:
+      - mkdir -p bin
+      - |
+        if [ ! -x ./bin/mockery ]; then
+          GOBIN="$(pwd)/bin" go install github.com/vektra/mockery/v2@v2.52.4
+        fi
+
   lint:
     desc: Run linter
     deps:
@@ -40,6 +50,13 @@ tasks:
       - mkdir -p internal/api
       - ./bin/oapi-codegen -config spec/openapi/oapi-codegen.types.yaml spec/openapi/users.yaml
       - ./bin/oapi-codegen -config spec/openapi/oapi-codegen.server.yaml spec/openapi/users.yaml
+
+  gen-mocks:
+    desc: Generate mocks
+    deps:
+      - install-mockery
+    cmds:
+      - ./bin/mockery --config mockery.yaml
 
   check-generated:
     desc: Verify generated files are up to date
