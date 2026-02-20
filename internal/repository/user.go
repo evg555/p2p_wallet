@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/infra"
@@ -14,7 +15,7 @@ var _ service.Repo = (*repo)(nil)
 type Client interface {
 	Get(id int64) (any, error)
 	GetAll() ([]any, error)
-	Set(id int64, v any)
+	Set(id int64, v any, ttl time.Duration)
 }
 type repo struct {
 	client Client
@@ -30,7 +31,7 @@ func (r repo) Save(ctx context.Context, user *domain.User) (*domain.User, error)
 		return nil, errors.New("user already exists")
 	}
 
-	r.client.Set(user.ID, user)
+	r.client.Set(user.ID, user, 0)
 	return user, nil
 }
 
