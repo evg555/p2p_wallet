@@ -1,11 +1,11 @@
 @host = http://localhost:8080
 @contentType = application/json
-@userId = 3526823990806735368
+@userId = 4138540981987513
 @sessionId = abc123
 
 ### Регистрация пользователя
 POST {{host}}/users/register
-Content-Type: {{contentType}} // 3526823990806735368
+Content-Type: {{contentType}}
 
 {
   "login": "alex.smith",

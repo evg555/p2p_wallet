@@ -85,7 +85,7 @@ func TestUserFlowE2E(t *testing.T) {
 	defer loginResp.Body.Close()
 	cookies := loginResp.Cookies()
 	if len(cookies) == 0 {
-		t.Fatal("expected session cookie after login")
+		t.Fatalf("expected session cookie after login, Set-Cookie=%q", loginResp.Header.Values("Set-Cookie"))
 	}
 
 	var sessionCookie *http.Cookie

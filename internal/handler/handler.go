@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
@@ -38,55 +39,58 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		resp := api.ErrorResponse{
+		resp := api.LoginUser400JSONResponse{
 			Code:    "wrong parameters",
 			Message: err.Error(),
 		}
-
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = resp.VisitLoginUserResponse(w)
 		return
 	}
 
 	user, err := h.userSrv.Login(r.Context(), req)
 	if err != nil {
-		resp := api.ErrorResponse{
-			Code:    "user cannot login",
-			Message: err.Error(),
-		}
-
+		code := "cannot login user"
 		switch true {
 		case errors.Is(err, errs.ErrUserNotFound):
-			w.WriteHeader(http.StatusNotFound)
+			resp := api.LoginUser404JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitLoginUserResponse(w)
 		case errors.Is(err, errs.ErrPasswordMismatch):
-			w.WriteHeader(http.StatusUnauthorized)
+			resp := api.LoginUser401JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitLoginUserResponse(w)
 		default:
-			w.WriteHeader(http.StatusInternalServerError)
+			_ = response500Error(w, code, err)
 		}
 
-		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	resp := api.UserResponse{
-		CreatedAt: user.CreatedAt,
-		Id:        user.ID,
-		LastName:  user.LastName,
-		Login:     user.Login,
-		Name:      user.FirstName,
+	resp := api.LoginUser200JSONResponse{
+		Body: api.UserResponse{
+			CreatedAt: user.CreatedAt,
+			Id:        user.ID,
+			LastName:  user.LastName,
+			Login:     user.Login,
+			Name:      user.FirstName,
+		},
+		Headers: api.LoginUser200ResponseHeaders{
+			SetCookie: (&http.Cookie{
+				Name:     "session_id",
+				Value:    defaultSessionID,
+				Path:     "/",
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+				MaxAge:   3600,
+			}).String(),
+		},
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_id",
-		Value:    defaultSessionID,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   3600,
-	})
-
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = resp.VisitLoginUserResponse(w)
 }
 
 func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -94,67 +98,59 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		resp := api.ErrorResponse{
+		resp := api.RegisterUser400JSONResponse{
 			Code:    "wrong parameters",
 			Message: err.Error(),
 		}
-
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = resp.VisitRegisterUserResponse(w)
 		return
 	}
 
 	user, err := h.userSrv.Register(r.Context(), req)
 	if err != nil {
-		resp := api.ErrorResponse{
-			Code:    "cannot create user",
-			Message: err.Error(),
-		}
-
+		code := "cannot create user"
 		switch true {
 		case errors.Is(err, errs.ErrUserAlreadyExist):
-			w.WriteHeader(http.StatusConflict)
+			resp := api.RegisterUser409JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitRegisterUserResponse(w)
 		default:
-			w.WriteHeader(http.StatusInternalServerError)
+			_ = response500Error(w, code, err)
 		}
-
-		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	resp := api.UserResponse{
+	resp := api.RegisterUser201JSONResponse{
 		CreatedAt: user.CreatedAt,
 		Id:        user.ID,
 		LastName:  user.LastName,
 		Login:     user.Login,
 		Name:      user.FirstName,
 	}
-
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = resp.VisitRegisterUserResponse(w)
 }
 
 func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.UserId) {
 	if id <= 0 {
-		resp := api.ErrorResponse{
+		resp := api.GetUserById400JSONResponse{
 			Code:    "invalid user id",
-			Message: "user id must be greater than zero",
+			Message: "id must be greater than zero",
 		}
-
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = resp.VisitGetUserByIdResponse(w)
 		return
 	}
 
+	code := "cannot get user"
+
 	c, err := r.Cookie("session_id")
-	if err != nil {
-		resp := api.ErrorResponse{
-			Code:    "authorization failed",
+	if err != nil || c.Value == "" {
+		resp := api.GetUserById401JSONResponse{
+			Code:    code,
 			Message: "user session is empty",
 		}
-
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = resp.VisitGetUserByIdResponse(w)
 		return
 	}
 
@@ -162,25 +158,32 @@ func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.Use
 
 	user, err := h.userSrv.GetUser(ctx, id)
 	if err != nil {
-		resp := api.ErrorResponse{
-			Code:    "cannot get user",
-			Message: err.Error(),
-		}
-
 		switch true {
 		case errors.Is(err, errs.ErrUserNotFound):
-			w.WriteHeader(http.StatusNotFound)
+			resp := api.GetUserById404JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitGetUserByIdResponse(w)
+		case errors.Is(err, errs.ErrSessionNotFound):
+			resp := api.GetUserById401JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitGetUserByIdResponse(w)
 		case errors.Is(err, errs.ErrAccessDenied):
-			w.WriteHeader(http.StatusUnauthorized)
+			resp := api.GetUserById403JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitGetUserByIdResponse(w)
 		default:
-			w.WriteHeader(http.StatusInternalServerError)
+			_ = response500Error(w, code, err)
 		}
-
-		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	resp := api.UserResponse{
+	resp := api.GetUserById200JSONResponse{
 		CreatedAt: user.CreatedAt,
 		Id:        user.ID,
 		LastName:  user.LastName,
@@ -188,32 +191,28 @@ func (h *handler) GetUserById(w http.ResponseWriter, r *http.Request, id api.Use
 		Name:      user.FirstName,
 		UpdatedAt: user.UpdatedAt,
 	}
-
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = resp.VisitGetUserByIdResponse(w)
 }
 
 func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.UserId) {
 	if id <= 0 {
-		resp := api.ErrorResponse{
+		resp := api.LogoutUser400JSONResponse{
 			Code:    "invalid user id",
-			Message: "user id must be greater than zero",
+			Message: "id must be greater than zero",
 		}
-
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = resp.VisitLogoutUserResponse(w)
 		return
 	}
 
+	code := "cannot logout user"
+
 	c, err := r.Cookie("session_id")
-	if err != nil {
-		resp := api.ErrorResponse{
-			Code:    "cannot logout user",
+	if err != nil || c.Value == "" {
+		resp := api.LogoutUser401JSONResponse{
+			Code:    code,
 			Message: "user session is empty",
 		}
-
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = resp.VisitLogoutUserResponse(w)
 		return
 	}
 
@@ -221,26 +220,55 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 
 	err = h.userSrv.Logout(ctx, id)
 	if err != nil {
-		resp := api.ErrorResponse{
-			Code:    "cannot logout user",
-			Message: err.Error(),
-		}
-
 		switch true {
 		case errors.Is(err, errs.ErrUserNotFound):
-			w.WriteHeader(http.StatusNotFound)
-		case errors.Is(err, errs.ErrPasswordMismatch):
-			w.WriteHeader(http.StatusUnauthorized)
+			resp := api.LogoutUser404JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitLogoutUserResponse(w)
+		case errors.Is(err, errs.ErrSessionNotFound):
+			resp := api.LogoutUser401JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitLogoutUserResponse(w)
 		case errors.Is(err, errs.ErrAccessDenied):
-			w.WriteHeader(http.StatusForbidden)
+			resp := api.LogoutUser403JSONResponse{
+				Code:    code,
+				Message: err.Error(),
+			}
+			_ = resp.VisitLogoutUserResponse(w)
 		default:
-			w.WriteHeader(http.StatusInternalServerError)
+			_ = response500Error(w, code, err)
 		}
-
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	resp := api.LogoutUser204Response{
+		Headers: api.LogoutUser204ResponseHeaders{
+			SetCookie: (&http.Cookie{
+				Name:     "session_id",
+				Value:    "",
+				Path:     "/",
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+				Expires:  time.Unix(0, 0),
+				MaxAge:   -1,
+			}).String(),
+		},
+	}
+	_ = resp.VisitLogoutUserResponse(w)
+}
+
+func response500Error(w http.ResponseWriter, code string, err error) error {
+	response := api.ErrorResponse{
+		Code:    code,
+		Message: err.Error(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusInternalServerError)
+
+	return json.NewEncoder(w).Encode(response)
+
 }

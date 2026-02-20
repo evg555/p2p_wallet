@@ -9,4 +9,5 @@ var (
 	ErrPasswordMismatch = errors.New("password mismatch")
 	ErrAccessDenied     = errors.New("access denied")
 	ErrUserAlreadyExist = errors.New("user already exist")
+	ErrSessionNotFound  = errors.New("session not found")
 )

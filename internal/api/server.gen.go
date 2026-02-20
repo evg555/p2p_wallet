@@ -311,11 +311,29 @@ func (response LoginUser200JSONResponse) VisitLoginUserResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type LoginUser400JSONResponse ErrorResponse
+
+func (response LoginUser400JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type LoginUser401JSONResponse ErrorResponse
 
 func (response LoginUser401JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LoginUser404JSONResponse ErrorResponse
+
+func (response LoginUser404JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -372,6 +390,33 @@ func (response GetUserById200JSONResponse) VisitGetUserByIdResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetUserById400JSONResponse ErrorResponse
+
+func (response GetUserById400JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUserById401JSONResponse ErrorResponse
+
+func (response GetUserById401JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUserById403JSONResponse ErrorResponse
+
+func (response GetUserById403JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetUserById404JSONResponse ErrorResponse
 
 func (response GetUserById404JSONResponse) VisitGetUserByIdResponse(w http.ResponseWriter) error {
@@ -389,12 +434,27 @@ type LogoutUserResponseObject interface {
 	VisitLogoutUserResponse(w http.ResponseWriter) error
 }
 
+type LogoutUser204ResponseHeaders struct {
+	SetCookie string
+}
+
 type LogoutUser204Response struct {
+	Headers LogoutUser204ResponseHeaders
 }
 
 func (response LogoutUser204Response) VisitLogoutUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(204)
 	return nil
+}
+
+type LogoutUser400JSONResponse ErrorResponse
+
+func (response LogoutUser400JSONResponse) VisitLogoutUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type LogoutUser401JSONResponse ErrorResponse
@@ -402,6 +462,15 @@ type LogoutUser401JSONResponse ErrorResponse
 func (response LogoutUser401JSONResponse) VisitLogoutUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LogoutUser403JSONResponse ErrorResponse
+
+func (response LogoutUser403JSONResponse) VisitLogoutUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
