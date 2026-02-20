@@ -31,3 +31,17 @@ tasks:
       - install-lint
     cmds:
       - ./bin/golangci-lint run
+
+  gen-api:
+    desc: Generate OpenAPI models and server
+    deps:
+      - install-oapi-gen
+    cmds:
+      - mkdir -p internal/api
+      - ./bin/oapi-codegen -config spec/openapi/oapi-codegen.types.yaml spec/openapi/users.yaml
+      - ./bin/oapi-codegen -config spec/openapi/oapi-codegen.server.yaml spec/openapi/users.yaml
+
+  test:
+    desc: Run tets
+    cmds:
+      - go test ./...
