@@ -15,10 +15,10 @@ var defaultSessionID = "abc123"
 type ctxKey string
 
 type Service interface {
-	Register(ctx context.Context, input api.RegisterRequest) (domain.User, error)
-	Login(ctx context.Context, input api.LoginRequest) (domain.User, error)
+	Register(ctx context.Context, input api.RegisterRequest) (*domain.User, error)
+	Login(ctx context.Context, input api.LoginRequest) (*domain.User, error)
 	Logout(ctx context.Context, id int64) error
-	GetUser(ctx context.Context, id int64) (domain.User, error)
+	GetUser(ctx context.Context, id int64) (*domain.User, error)
 }
 
 type handler struct {
