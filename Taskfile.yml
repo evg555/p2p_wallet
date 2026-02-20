@@ -41,6 +41,12 @@ tasks:
       - ./bin/oapi-codegen -config spec/openapi/oapi-codegen.types.yaml spec/openapi/users.yaml
       - ./bin/oapi-codegen -config spec/openapi/oapi-codegen.server.yaml spec/openapi/users.yaml
 
+  check-generated:
+    desc: Verify generated files are up to date
+    cmds:
+      - { task: gen-api }
+      - git diff --exit-code -- internal/api/*.gen.go
+
   test:
     desc: Run test
     cmds:
@@ -49,6 +55,7 @@ tasks:
   check:
     desc: Check stability
     cmds:
+      - { task: check-generated }
       - { task: lint }
       - { task: test }
       - { task: build }

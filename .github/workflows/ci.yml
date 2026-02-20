@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install task
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.44.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        run: task install-deps
+
+      - name: Verify generated OpenAPI code
+        run: |
+          task gen-api
+          git diff --exit-code
+
+      - name: Lint
+        run: task lint
+
+      - name: Test
+        run: go test ./...
