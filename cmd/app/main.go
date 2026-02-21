@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,8 +13,11 @@ import (
 
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/handler"
+	"p2p_wallet/internal/repository"
+	"p2p_wallet/internal/service"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/go-chi/chi/v5"
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 )
@@ -21,7 +25,12 @@ import (
 var srvAddress = "localhost:8080"
 
 func main() {
-	router := buildRouter()
+	userRepo := repository.NewUserRepo()
+	sessionRepo := repository.NewSessionRepo()
+	userSrv := service.New(userRepo, sessionRepo)
+	h := handler.New(userSrv)
+	router := buildRouter(h)
+
 	srv := &http.Server{
 		Addr:              srvAddress,
 		Handler:           router,
@@ -52,7 +61,7 @@ func main() {
 	log.Printf("http server stopped")
 }
 
-func buildRouter() http.Handler {
+func buildRouter(h api.ServerInterface) http.Handler {
 	loader := openapi3.NewLoader()
 	swagger, err := loader.LoadFromFile("spec/openapi/users.yaml")
 	if err != nil {
@@ -63,8 +72,28 @@ func buildRouter() http.Handler {
 	}
 
 	r := chi.NewRouter()
-	r.Use(middleware.OapiRequestValidator(swagger))
+	r.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+		Options: openapi3filter.Options{
+			AuthenticationFunc: authenticateRequest,
+		},
+	}))
 
-	h := handler.New()
 	return api.HandlerFromMux(h, r)
+}
+
+func authenticateRequest(_ context.Context, ai *openapi3filter.AuthenticationInput) error {
+	if ai == nil || ai.RequestValidationInput == nil || ai.RequestValidationInput.Request == nil {
+		return errors.New("invalid authentication input")
+	}
+
+	switch ai.SecuritySchemeName {
+	case "SessionCookieAuth":
+		cookie, err := ai.RequestValidationInput.Request.Cookie("session_id")
+		if err != nil || cookie == nil || cookie.Value == "" {
+			return errors.New("missing session_id cookie")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported security scheme: %s", ai.SecuritySchemeName)
+	}
 }

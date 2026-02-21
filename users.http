@@ -1,0 +1,45 @@
+@host = http://localhost:8080
+@contentType = application/json
+@userId = 4138540981987513
+@sessionId = abc123
+
+### Регистрация пользователя
+POST {{host}}/users/register
+Content-Type: {{contentType}}
+
+{
+  "login": "alex.smith",
+  "password": "qwerty123",
+  "name": "Alex",
+  "last_name": "Smith"
+}
+
+### Логин пользователя (в ответе придет Set-Cookie: session_id=...)
+POST {{host}}/users/login
+Content-Type: {{contentType}}
+
+{
+  "login": "alex.smith",
+  "password": "qwerty123"
+}
+
+### Получить пользователя по id (нужна cookie session_id)
+GET {{host}}/users/{{userId}}
+Cookie: session_id={{sessionId}}
+
+### Логаут пользователя (нужна cookie session_id)
+POST {{host}}/users/{{userId}}/logout
+Cookie: session_id={{sessionId}}
+
+### Пример ошибки: несуществующий пользователь
+GET {{host}}/users/999999
+Cookie: session_id={{sessionId}}
+
+### Пример ошибки логина: неверный пароль
+POST {{host}}/users/login
+Content-Type: {{contentType}}
+
+{
+  "login": "alex.smith",
+  "password": "wrong-password"
+}

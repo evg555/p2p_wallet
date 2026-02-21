@@ -33,5 +33,8 @@ jobs:
       - name: Lint
         run: task lint
 
-      - name: Test
-        run: go test ./...
+      - name: Unit Tests
+        run: task unit-test
+
+      - name: API Tests
+        run: task api-test
