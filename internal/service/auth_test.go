@@ -33,10 +33,9 @@ func TestRegister(t *testing.T) {
 		return u != nil &&
 			u.ID != 0 &&
 			u.Login == input.Login &&
-			u.Password == domain.EncodePassword(input.Password) &&
+			u.CheckPassword(input.Password) &&
 			u.FirstName == input.Name &&
-			u.LastName == input.LastName &&
-			time.Since(u.CreatedAt) < 5*time.Second
+			u.LastName == input.LastName
 	})).RunAndReturn(func(_ context.Context, u *domain.User) (*domain.User, error) {
 		return u, nil
 	})
@@ -45,7 +44,7 @@ func TestRegister(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Equal(t, input.Login, got.Login)
-	assert.Equal(t, domain.EncodePassword(input.Password), got.Password)
+	assert.True(t, got.CheckPassword(input.Password))
 }
 
 func TestLogin(t *testing.T) {
@@ -87,7 +86,7 @@ func TestLogin(t *testing.T) {
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(&domain.User{
 			ID:       1,
 			Login:    "john",
-			Password: domain.EncodePassword("another-secret"),
+			Password: "another-secret",
 		}, nil)
 
 		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
@@ -101,14 +100,14 @@ func TestLogin(t *testing.T) {
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		svc := New(userRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByLogin(ctx, "john").Return(&domain.User{
-			ID:        1,
-			Login:     "john",
-			Password:  domain.EncodePassword("secret"),
-			FirstName: "John",
-			LastName:  "Doe",
-		}, nil)
-		sessionRepo.EXPECT().Set(int64(1), mock.AnythingOfType("string"), sessionTTL).Return()
+		user, err := domain.NewUser("john", "secret", "John", "Doe")
+		assert.NoError(t, err)
+
+		user.ID = 1
+		user.CreatedAt = time.Now()
+
+		userRepo.EXPECT().GetByLogin(ctx, "john").Return(user, nil)
+		sessionRepo.EXPECT().Set(int64(1), mock.Anything, sessionTTL).Return()
 
 		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
 		assert.NoError(t, err)

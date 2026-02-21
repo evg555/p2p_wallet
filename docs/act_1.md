@@ -22,6 +22,7 @@
 ```json
 {
   "id": 1,
+  "login": "string",
   "name": "string",
   "last_name": "string",
   "created_at": "2026-02-19T13:00:00Z"
@@ -50,8 +51,6 @@
   "login": "string",
   "name": "string",
   "last_name": "string",
-  "created_at": "string",
-  "updated_at": "string"
 }
 ```
 
@@ -65,23 +64,6 @@
 
 `POST /users/{id}/logout`
 - `header Cookie: session_id=string`
-
-## 4. Получение информации о пользователе по id
-
-`GET /users/{id}`
-
-### Response
-- `200 Ok`
-```json
-{
-  "id": 1,
-  "login": "string",
-  "name": "string",
-  "last_name": "string",
-  "created_at": "string",
-  "updated_at": "string"
-}
-```
 
 ## Хранение в БД
 
@@ -115,6 +97,6 @@
 - `404 Not Found`, если пользователь `{id}` не существует.
 
 ### Общее
-- Единый формат ошибок (`code`, `message`, `details`).
+- Единый формат ошибок (`code`, `message`).
 - Ограничения на длину и допустимые символы для `login`.
 - Таймзона для `created_at`/`updated_at` (рекомендуется UTC).

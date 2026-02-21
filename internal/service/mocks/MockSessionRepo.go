@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	domain "p2p_wallet/internal/domain"
+
 	mock "github.com/stretchr/testify/mock"
 
 	time "time"
@@ -55,22 +57,22 @@ func (_c *MockSessionRepo_Delete_Call) RunAndReturn(run func(int64)) *MockSessio
 }
 
 // Get provides a mock function with given fields: id
-func (_m *MockSessionRepo) Get(id int64) (string, error) {
+func (_m *MockSessionRepo) Get(id int64) (domain.SessionID, error) {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 string
+	var r0 domain.SessionID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(int64) (domain.SessionID, error)); ok {
 		return rf(id)
 	}
-	if rf, ok := ret.Get(0).(func(int64) string); ok {
+	if rf, ok := ret.Get(0).(func(int64) domain.SessionID); ok {
 		r0 = rf(id)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(domain.SessionID)
 	}
 
 	if rf, ok := ret.Get(1).(func(int64) error); ok {
@@ -100,18 +102,18 @@ func (_c *MockSessionRepo_Get_Call) Run(run func(id int64)) *MockSessionRepo_Get
 	return _c
 }
 
-func (_c *MockSessionRepo_Get_Call) Return(_a0 string, _a1 error) *MockSessionRepo_Get_Call {
+func (_c *MockSessionRepo_Get_Call) Return(_a0 domain.SessionID, _a1 error) *MockSessionRepo_Get_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockSessionRepo_Get_Call) RunAndReturn(run func(int64) (string, error)) *MockSessionRepo_Get_Call {
+func (_c *MockSessionRepo_Get_Call) RunAndReturn(run func(int64) (domain.SessionID, error)) *MockSessionRepo_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Set provides a mock function with given fields: id, v, ttl
-func (_m *MockSessionRepo) Set(id int64, v string, ttl time.Duration) {
+func (_m *MockSessionRepo) Set(id int64, v domain.SessionID, ttl time.Duration) {
 	_m.Called(id, v, ttl)
 }
 
@@ -122,15 +124,15 @@ type MockSessionRepo_Set_Call struct {
 
 // Set is a helper method to define mock.On call
 //   - id int64
-//   - v string
+//   - v domain.SessionID
 //   - ttl time.Duration
 func (_e *MockSessionRepo_Expecter) Set(id interface{}, v interface{}, ttl interface{}) *MockSessionRepo_Set_Call {
 	return &MockSessionRepo_Set_Call{Call: _e.mock.On("Set", id, v, ttl)}
 }
 
-func (_c *MockSessionRepo_Set_Call) Run(run func(id int64, v string, ttl time.Duration)) *MockSessionRepo_Set_Call {
+func (_c *MockSessionRepo_Set_Call) Run(run func(id int64, v domain.SessionID, ttl time.Duration)) *MockSessionRepo_Set_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(string), args[2].(time.Duration))
+		run(args[0].(int64), args[1].(domain.SessionID), args[2].(time.Duration))
 	})
 	return _c
 }
@@ -140,7 +142,7 @@ func (_c *MockSessionRepo_Set_Call) Return() *MockSessionRepo_Set_Call {
 	return _c
 }
 
-func (_c *MockSessionRepo_Set_Call) RunAndReturn(run func(int64, string, time.Duration)) *MockSessionRepo_Set_Call {
+func (_c *MockSessionRepo_Set_Call) RunAndReturn(run func(int64, domain.SessionID, time.Duration)) *MockSessionRepo_Set_Call {
 	_c.Run(run)
 	return _c
 }

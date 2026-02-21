@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/infra"
 	"p2p_wallet/internal/service"
 )
@@ -27,13 +28,13 @@ func NewSessionRepo() *sessionRepo {
 	}
 }
 
-func (s *sessionRepo) Get(id int64) (string, error) {
+func (s *sessionRepo) Get(id int64) (domain.SessionID, error) {
 	val, err := s.cache.Get(id)
 	if err != nil {
 		return "", err
 	}
 
-	valStr, ok := val.(string)
+	valStr, ok := val.(domain.SessionID)
 	if !ok {
 		return "", errWrongType
 	}
@@ -41,7 +42,7 @@ func (s *sessionRepo) Get(id int64) (string, error) {
 	return valStr, nil
 }
 
-func (s *sessionRepo) Set(id int64, v string, ttl time.Duration) {
+func (s *sessionRepo) Set(id int64, v domain.SessionID, ttl time.Duration) {
 	s.cache.Set(id, v, ttl)
 }
 

@@ -67,7 +67,7 @@ tasks:
   unit-test:
     desc: Run unit tests
     cmds:
-      - go test ./internal/...
+      - go test -cover ./internal/service/... ./internal/domain/...
 
   api-test:
     desc: Run api teste

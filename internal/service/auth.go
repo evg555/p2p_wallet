@@ -8,8 +8,6 @@ import (
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/errs"
-
-	"github.com/google/uuid"
 )
 
 var sessionTTL = 1 * time.Hour
@@ -21,8 +19,8 @@ type UserRepo interface {
 }
 
 type SessionRepo interface {
-	Get(id int64) (string, error)
-	Set(id int64, v string, ttl time.Duration)
+	Get(id int64) (domain.SessionID, error)
+	Set(id int64, v domain.SessionID, ttl time.Duration)
 	Delete(id int64)
 }
 
@@ -39,15 +37,10 @@ func New(repo UserRepo, sessionRepo SessionRepo) *service {
 }
 
 func (s *service) Register(ctx context.Context, input api.RegisterRequest) (*domain.User, error) {
-	user := &domain.User{
-		Login:     input.Login,
-		Password:  domain.EncodePassword(input.Password),
-		FirstName: input.Name,
-		LastName:  input.LastName,
-		CreatedAt: time.Now().UTC(),
+	user, err := domain.NewUser(input.Login, input.Password, input.Name, input.LastName)
+	if err != nil {
+		return nil, err
 	}
-
-	user.NewUserID()
 
 	return s.userRepo.Save(ctx, user)
 }
@@ -62,30 +55,30 @@ func (s *service) Login(ctx context.Context, input api.LoginRequest) (*domain.Au
 		return nil, errs.ErrUserNotFound
 	}
 
-	if !domain.CheckPassword(input.Password, user.Password) {
+	if !user.CheckPassword(input.Password) {
 		return nil, errs.ErrPasswordMismatch
 	}
 
-	newSessionID, _ := uuid.NewV7()
-	s.sessionRepo.Set(user.ID, newSessionID.String(), sessionTTL)
+	newSessionID := domain.NewSessionID()
+	s.sessionRepo.Set(user.ID, newSessionID, sessionTTL)
 
 	return &domain.AuthResult{
 		UserID:       user.ID,
 		UserLogin:    user.Login,
 		UserName:     user.FirstName,
 		UserLastName: user.LastName,
-		SessionID:    newSessionID.String(),
+		SessionID:    newSessionID,
 	}, nil
 }
 
 func (s *service) Logout(ctx context.Context, id int64) error {
 	existSessionID, err := s.sessionRepo.Get(id)
-	if err != nil || existSessionID == "" {
+	if err != nil || existSessionID.IsEmpty() {
 		return errs.ErrSessionNotFound
 	}
 
-	sessionID := ctx.Value(domain.CtxKey(domain.SessionKey)).(string)
-	if sessionID != existSessionID {
+	sessionID, ok := ctx.Value(domain.CtxKey(domain.SessionKey)).(string)
+	if !ok || !existSessionID.Equal(sessionID) {
 		return errs.ErrAccessDenied
 	}
 

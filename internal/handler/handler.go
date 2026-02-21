@@ -75,7 +75,7 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		Headers: api.LoginUser200ResponseHeaders{
 			SetCookie: (&http.Cookie{
 				Name:     domain.SessionKey,
-				Value:    res.SessionID,
+				Value:    string(res.SessionID),
 				Path:     "/",
 				HttpOnly: true,
 				SameSite: http.SameSiteLaxMode,
