@@ -8,21 +8,25 @@ services:
         COMMIT_SHA: ${COMMIT_SHA:-unknown}
         BUILD_TIME: ${BUILD_TIME:-unknown}
     image: p2p-wallet-auth:latest
+    env_file:
+      - .env
     depends_on:
       - postgres
     ports:
-      - "8080:8080"
+      - 8080:${HTTP_PORT:-8080}
+    volumes:
+      - ./.env:/app/.env:ro
     networks:
       - app_net
 
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: p2p_wallet
-      POSTGRES_USER: dbuser
-      POSTGRES_PASSWORD: dbpass
+      POSTGRES_DB: ${DB_DATABASE:-p2p_wallet}
+      POSTGRES_USER: ${DB_USER:-dbuser}
+      POSTGRES_PASSWORD: ${DB_PASS:-dbpass}
     ports:
-      - "5432:5432"
+      - 5432:${DB_PORT:-5432}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:

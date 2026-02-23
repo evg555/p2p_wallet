@@ -9,9 +9,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const dsn = "postgres://dbuser:dbpass@localhost:5432/p2p_wallet?sslmode=disable"
-
-func NewClient() (*sql.DB, error) {
+func NewClient(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open postgres connection: %w", err)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"p2p_wallet/internal/handler"
 	"p2p_wallet/internal/repository"
 	"p2p_wallet/internal/service"
+	"p2p_wallet/internal/shared/config"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -27,26 +29,31 @@ var (
 	VERSION    = "dev"
 	COMMIT_SHA = "unknown" //nolint:revive
 	BUILD_TIME = "unknown" //nolint:revive
-	srvAddress = "localhost:8080"
 )
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	log.Printf("build info: VERSION=%s COMMIT_SHA=%s BUILD_TIME=%s", VERSION, COMMIT_SHA, BUILD_TIME)
 
-	userRepo := repository.NewUserPostgresRepo()
+	userRepo := repository.NewUserPostgresRepo(cfg.Postgres)
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(userRepo, sessionRepo)
 	h := handler.New(userSrv)
 	router := buildRouter(h)
 
 	srv := &http.Server{
-		Addr:              srvAddress,
+		Addr:              srvAddress(cfg.ServerConfig),
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: cfg.ServerConfig.ReadHeaderTimeout,
+		ReadTimeout:       cfg.ServerConfig.ReadTimeout,
 	}
 
 	go func() {
-		log.Printf("http server started on :%s", srvAddress)
+		log.Printf("http server started on %s", srvAddress(cfg.ServerConfig))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("http server failed: %v", err)
 		}
@@ -104,4 +111,8 @@ func authenticateRequest(_ context.Context, ai *openapi3filter.AuthenticationInp
 	default:
 		return fmt.Errorf("unsupported security scheme: %s", ai.SecuritySchemeName)
 	}
+}
+
+func srvAddress(cfg config.ServerConfig) string {
+	return net.JoinHostPort(cfg.Host, cfg.Port)
 }

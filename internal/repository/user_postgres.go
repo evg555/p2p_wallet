@@ -10,6 +10,7 @@ import (
 	"p2p_wallet/internal/errs"
 	"p2p_wallet/internal/infra/persistence/postgres"
 	"p2p_wallet/internal/service"
+	"p2p_wallet/internal/shared/config"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -118,8 +119,8 @@ func (r *userPostgresRepo) GetByID(ctx context.Context, id int64) (*domain.User,
 	return user, nil
 }
 
-func NewUserPostgresRepo() *userPostgresRepo {
-	client, err := postgres.NewClient()
+func NewUserPostgresRepo(cfg config.PostgresConfig) *userPostgresRepo {
+	client, err := postgres.NewClient(buildDSN(cfg))
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize postgres client: %v", err))
 	}
@@ -127,4 +128,11 @@ func NewUserPostgresRepo() *userPostgresRepo {
 	return &userPostgresRepo{
 		client: client,
 	}
+}
+
+func buildDSN(cfg config.PostgresConfig) string {
+	// dsn = "postgres://dbuser:dbpass@localhost:5432/p2p_wallet?sslmode=disable"
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.SSLMode,
+	)
 }
