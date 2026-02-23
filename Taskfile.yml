@@ -80,9 +80,14 @@ tasks:
       - go test -cover ./internal/service/... ./internal/domain/...
 
   api-test:
-    desc: Run api teste
+    desc: Run contracts test
     cmds:
       - go test -v ./tests/api/...
+
+  integration-test:
+    desc: Run repo tests
+    cmds:
+      - go test -v ./internal/repository/...
 
   check:
     desc: Check stability
@@ -90,6 +95,7 @@ tasks:
       - { task: check-generated }
       - { task: lint }
       - { task: unit-test }
+      - { task: integration-test }
       - { task: api-test }
       - { task: build }
 
