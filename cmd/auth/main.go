@@ -25,8 +25,8 @@ import (
 // Example: VERSION=1.2.3 COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build
 var (
 	VERSION    = "dev"
-	COMMIT_SHA = "unknown"
-	BUILD_TIME = "unknown"
+	COMMIT_SHA = "unknown" //nolint:revive
+	BUILD_TIME = "unknown" //nolint:revive
 	srvAddress = "localhost:8080"
 )
 
