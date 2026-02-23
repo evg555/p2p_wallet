@@ -11,11 +11,7 @@ import (
 
 const dsn = "postgres://dbuser:dbpass@postgres:5432/p2p_wallet?sslmode=disable"
 
-type client struct {
-	db *sql.DB
-}
-
-func NewClient() (*client, error) {
+func NewClient() (*sql.DB, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open postgres connection: %w", err)
@@ -29,5 +25,5 @@ func NewClient() (*client, error) {
 		return nil, fmt.Errorf("ping postgres: %w", err)
 	}
 
-	return &client{db: db}, nil
+	return db, nil
 }

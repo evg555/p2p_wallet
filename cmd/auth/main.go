@@ -33,7 +33,7 @@ var (
 func main() {
 	log.Printf("build info: VERSION=%s COMMIT_SHA=%s BUILD_TIME=%s", VERSION, COMMIT_SHA, BUILD_TIME)
 
-	userRepo := repository.NewUserRepo()
+	userRepo := repository.NewUserCacheRepo()
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(userRepo, sessionRepo)
 	h := handler.New(userSrv)

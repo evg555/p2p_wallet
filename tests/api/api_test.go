@@ -17,7 +17,7 @@ import (
 
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
-	userRepo := repository.NewUserRepo()
+	userRepo := repository.NewUserCacheRepo()
 	sessionRepo := repository.NewSessionRepo()
 	srv := service.New(userRepo, sessionRepo)
 	h := handler.New(srv)

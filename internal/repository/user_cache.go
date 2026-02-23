@@ -10,18 +10,18 @@ import (
 	"p2p_wallet/internal/service"
 )
 
-var _ service.UserRepo = (*userRepo)(nil)
+var _ service.UserRepo = (*userCacheRepo)(nil)
 
 type Client interface {
 	Get(id int64) (any, error)
 	GetAll() ([]any, error)
 	Set(id int64, v any, ttl time.Duration)
 }
-type userRepo struct {
+type userCacheRepo struct {
 	client Client
 }
 
-func (r userRepo) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (r userCacheRepo) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
 	existUser, err := r.client.Get(user.ID)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func (r userRepo) Save(ctx context.Context, user *domain.User) (*domain.User, er
 	return user, nil
 }
 
-func (r userRepo) GetByLogin(ctx context.Context, login string) (*domain.User, error) {
+func (r userCacheRepo) GetByLogin(ctx context.Context, login string) (*domain.User, error) {
 	vals, err := r.client.GetAll()
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (r userRepo) GetByLogin(ctx context.Context, login string) (*domain.User, e
 	return nil, nil
 }
 
-func (r userRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
+func (r userCacheRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	val, err := r.client.Get(id)
 	if err != nil {
 		return nil, err
@@ -64,8 +64,8 @@ func (r userRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	return val.(*domain.User), nil
 }
 
-func NewUserRepo() *userRepo {
-	return &userRepo{
+func NewUserCacheRepo() *userCacheRepo {
+	return &userCacheRepo{
 		client: infra.NewCache(),
 	}
 }
