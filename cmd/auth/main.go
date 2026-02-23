@@ -22,7 +22,7 @@ import (
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 )
 
-// Example: VERSION=1.2.3 COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build
+// Example: VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo unknown) COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build
 var (
 	VERSION    = "dev"
 	COMMIT_SHA = "unknown" //nolint:revive
