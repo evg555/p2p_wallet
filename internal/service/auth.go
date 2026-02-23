@@ -51,10 +51,6 @@ func (s *service) Login(ctx context.Context, input api.LoginRequest) (*domain.Au
 		return nil, fmt.Errorf("userRepo: failed to get user by login: %w", err)
 	}
 
-	if user == nil {
-		return nil, errs.ErrUserNotFound
-	}
-
 	if !user.CheckPassword(input.Password) {
 		return nil, errs.ErrPasswordMismatch
 	}
@@ -85,10 +81,6 @@ func (s *service) Logout(ctx context.Context, id int64) error {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("userRepo: failed to get user by id: %w", err)
-	}
-
-	if user == nil {
-		return errs.ErrUserNotFound
 	}
 
 	s.sessionRepo.Delete(user.ID)

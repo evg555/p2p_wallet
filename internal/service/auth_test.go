@@ -70,7 +70,7 @@ func TestLogin(t *testing.T) {
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		svc := New(userRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, nil)
+		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, errs.ErrUserNotFound)
 
 		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
 		assert.Nil(t, got)
@@ -166,7 +166,7 @@ func TestLogout(t *testing.T) {
 		svc := New(userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, nil)
+		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
 
 		err := svc.Logout(ctx, 1)
 		assert.ErrorIs(t, err, errs.ErrUserNotFound)
