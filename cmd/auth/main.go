@@ -22,9 +22,17 @@ import (
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 )
 
-var srvAddress = "localhost:8080"
+// Example: VERSION=1.2.3 COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build
+var (
+	VERSION    = "dev"
+	COMMIT_SHA = "unknown"
+	BUILD_TIME = "unknown"
+	srvAddress = "localhost:8080"
+)
 
 func main() {
+	log.Printf("build info: VERSION=%s COMMIT_SHA=%s BUILD_TIME=%s", VERSION, COMMIT_SHA, BUILD_TIME)
+
 	userRepo := repository.NewUserRepo()
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(userRepo, sessionRepo)

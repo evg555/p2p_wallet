@@ -3,6 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT_SHA: ${COMMIT_SHA:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
     image: p2p-wallet-auth:latest
     depends_on:
       - postgres

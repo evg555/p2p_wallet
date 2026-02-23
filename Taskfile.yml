@@ -88,9 +88,15 @@ tasks:
     deps:
       - build
     cmds:
-      - ./bin/app
+      - ./bin/auth
 
   build:
     desc: Build application
     cmds:
-      - go build -o ./bin/app cmd/app/main.go
+      - go build -o ./bin/auth cmd/auth/main.go
+
+
+  docker-run:
+    desc: Run application in docker
+    cmds:
+      - VERSION=1.2.3 COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose up --build --force-recreate -d auth
