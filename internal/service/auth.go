@@ -24,13 +24,18 @@ type SessionRepo interface {
 	Delete(id int64)
 }
 
+type Logger interface {
+}
+
 type service struct {
+	log         Logger
 	userRepo    UserRepo
 	sessionRepo SessionRepo
 }
 
-func New(repo UserRepo, sessionRepo SessionRepo) *service {
+func New(log Logger, repo UserRepo, sessionRepo SessionRepo) *service {
 	return &service{
+		log:         log,
 		userRepo:    repo,
 		sessionRepo: sessionRepo,
 	}

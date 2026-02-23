@@ -20,7 +20,8 @@ func TestRegister(t *testing.T) {
 	ctx := context.Background()
 	userRepo := mocks.NewMockUserRepo(t)
 	sessionRepo := mocks.NewMockSessionRepo(t)
-	svc := New(userRepo, sessionRepo)
+	logger := mocks.NewMockLogger(t)
+	svc := New(logger, userRepo, sessionRepo)
 
 	input := api.RegisterRequest{
 		Login:    "john",
@@ -52,7 +53,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db down")
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, repoErr)
@@ -68,7 +70,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, errs.ErrUserNotFound)
 
@@ -81,7 +84,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(&domain.User{
 			ID:       1,
@@ -98,7 +102,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		user, err := domain.NewUser("john", "secret", "John", "Doe")
 		assert.NoError(t, err)
@@ -123,7 +128,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("", errors.New("cache fail"))
 
@@ -135,7 +141,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "ctx-session")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("stored-session", nil)
 
@@ -147,7 +154,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db fail")
 		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
@@ -163,7 +171,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
@@ -176,7 +185,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)

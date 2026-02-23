@@ -10,6 +10,8 @@ import (
 )
 
 type Config struct {
+	Environment  string         `mapstructure:"ENV"`
+	Logger       LoggerConfig   `mapstructure:",squash"`
 	Postgres     PostgresConfig `mapstructure:",squash"`
 	ServerConfig ServerConfig   `mapstructure:",squash"`
 }
@@ -28,6 +30,11 @@ type ServerConfig struct {
 	Port              string        `mapstructure:"SERVER_PORT"`
 	ReadHeaderTimeout time.Duration `mapstructure:"READ_HEADER_TIMEOUT"`
 	ReadTimeout       time.Duration `mapstructure:"READ_TIMEOUT"`
+}
+
+type LoggerConfig struct {
+	Level  string `mapstructure:"LOG_LEVEL"`
+	Format string `mapstructure:"LOG_FORMAT"`
 }
 
 func Load() (Config, error) {
@@ -61,6 +68,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("SERVER_PORT", "8080")
 	v.SetDefault("READ_HEADER_TIMEOUT", "5s")
 	v.SetDefault("READ_TIMEOUT", "5s")
+	v.SetDefault("ENV", "local")
 }
 
 func readConfig(v *viper.Viper) error {

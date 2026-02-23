@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"p2p_wallet/internal/repository"
 	"p2p_wallet/internal/service"
 	"p2p_wallet/internal/shared/config"
+	"p2p_wallet/internal/shared/logger"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -34,16 +34,29 @@ var (
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	log.Printf("build info: VERSION=%s COMMIT_SHA=%s BUILD_TIME=%s", VERSION, COMMIT_SHA, BUILD_TIME)
+	log, err := logger.New(cfg.Logger)
+	if err != nil {
+		panic(err)
+	}
+	defer log.Sync() //nolint:errcheck
+
+	log = log.With("version", VERSION).
+		With("env", cfg.Environment)
+
+	log.Info(
+		"build info",
+		"commit_sha", COMMIT_SHA,
+		"time", BUILD_TIME,
+	)
 
 	userRepo := repository.NewUserPostgresRepo(cfg.Postgres)
 	sessionRepo := repository.NewSessionRepo()
-	userSrv := service.New(userRepo, sessionRepo)
+	userSrv := service.New(log, userRepo, sessionRepo)
 	h := handler.New(userSrv)
-	router := buildRouter(h)
+	router := buildRouter(log, h)
 
 	srv := &http.Server{
 		Addr:              srvAddress(cfg.ServerConfig),
@@ -53,9 +66,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("http server started on %s", srvAddress(cfg.ServerConfig))
+		log.Info("http server started", "addr", srvAddress(cfg.ServerConfig))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("http server failed: %v", err)
+			log.Error("http server failed", "error", err)
 		}
 	}()
 
@@ -63,27 +76,27 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
-	log.Printf("http server is stopping...")
+	log.Info("http server is stopping...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
+	if err = srv.Shutdown(ctx); err != nil {
+		log.Info("graceful shutdown failed", "error", err)
 		_ = srv.Close()
 	}
 
-	log.Printf("http server stopped")
+	log.Info("http server stopped")
 }
 
-func buildRouter(h api.ServerInterface) http.Handler {
+func buildRouter(log logger.Logger, h api.ServerInterface) http.Handler {
 	loader := openapi3.NewLoader()
 	swagger, err := loader.LoadFromFile("spec/openapi/users.yaml")
 	if err != nil {
-		log.Fatalf("load openapi: %v", err)
+		log.Error("load openapi", "error", err)
 	}
 	if err = swagger.Validate(context.Background()); err != nil {
-		log.Fatalf("validate openapi: %v", err)
+		log.Error("validate openapi", "error", err)
 	}
 
 	r := chi.NewRouter()

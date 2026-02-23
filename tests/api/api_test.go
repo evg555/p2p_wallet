@@ -13,13 +13,21 @@ import (
 	"p2p_wallet/internal/handler"
 	"p2p_wallet/internal/repository"
 	"p2p_wallet/internal/service"
+	"p2p_wallet/internal/shared/config"
+	"p2p_wallet/internal/shared/logger"
+
+	"github.com/stretchr/testify/require"
 )
 
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
+
+	log, err := logger.New(config.LoggerConfig{Level: "info"})
+	require.NoError(t, err)
+
 	userRepo := repository.NewUserCacheRepo()
 	sessionRepo := repository.NewSessionRepo()
-	srv := service.New(userRepo, sessionRepo)
+	srv := service.New(log, userRepo, sessionRepo)
 	h := handler.New(srv)
 	return api.Handler(h)
 }
