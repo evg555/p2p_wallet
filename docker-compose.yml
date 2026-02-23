@@ -1,0 +1,32 @@
+services:
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: p2p-wallet-auth:latest
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    networks:
+      - app_net
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: p2p_wallet
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_net
+
+volumes:
+  postgres_data:
+
+networks:
+  app_net:
+    driver: bridge
