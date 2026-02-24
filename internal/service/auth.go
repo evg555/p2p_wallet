@@ -41,7 +41,7 @@ func New(log Logger, repo UserRepo, sessionRepo SessionRepo) *service {
 	}
 }
 
-func (s *service) Register(ctx context.Context, input api.RegisterRequest) (*domain.User, error) {
+func (s *service) Register(ctx context.Context, input *api.RegisterRequest) (*domain.User, error) {
 	user, err := domain.NewUser(input.Login, input.Password, input.Name, input.LastName)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (s *service) Register(ctx context.Context, input api.RegisterRequest) (*dom
 	return s.userRepo.Save(ctx, user)
 }
 
-func (s *service) Login(ctx context.Context, input api.LoginRequest) (*domain.AuthResult, error) {
+func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.AuthResult, error) {
 	user, err := s.userRepo.GetByLogin(ctx, input.Login)
 	if err != nil {
 		return nil, fmt.Errorf("userRepo: failed to get user by login: %w", err)

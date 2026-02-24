@@ -28,7 +28,7 @@ type Logger interface {
 	Warn(msg string, keysAndValues ...any)
 }
 
-func NewServer(cfg config.ServerConfig, log Logger, h api.ServerInterface) *server {
+func NewServer(cfg config.ServerConfig, log Logger, h api.StrictServerInterface) *server {
 	router := buildRouter(log, h)
 	addr := buildAddress(cfg)
 
@@ -63,7 +63,7 @@ func (s *server) Close(ctx context.Context) {
 	s.log.Info("http server stopped")
 }
 
-func buildRouter(log Logger, h api.ServerInterface) http.Handler {
+func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 	loader := openapi3.NewLoader()
 	swagger, err := loader.LoadFromFile("spec/openapi/users.yaml")
 	if err != nil {
@@ -81,7 +81,14 @@ func buildRouter(log Logger, h api.ServerInterface) http.Handler {
 		},
 	}))
 
-	return api.HandlerFromMux(h, r)
+	strictHandler := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{}, api.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		},
+		ResponseErrorHandlerFunc: writeAPIError,
+	})
+
+	return api.HandlerFromMux(strictHandler, r)
 }
 
 func authenticateRequest(_ context.Context, ai *openapi3filter.AuthenticationInput) error {
