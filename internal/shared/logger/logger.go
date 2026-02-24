@@ -13,6 +13,9 @@ import (
 var (
 	FormatText = "console"
 	FormatJSON = "json"
+
+	EnvDev  = "local"
+	EnvProd = "production"
 )
 
 type logger struct {
@@ -28,7 +31,17 @@ type Logger interface {
 	With(keysAndValues ...any) *logger
 }
 
-func New(cfg config.LoggerConfig) (*logger, error) {
+func New(cfg config.LoggerConfig, env string) (*logger, error) {
+	var zapCfg zap.Config
+	switch env {
+	case EnvDev:
+		zapCfg = zap.NewDevelopmentConfig()
+	case EnvProd:
+		zapCfg = zap.NewProductionConfig()
+	default:
+		return &logger{}, fmt.Errorf("unknown environment %q", env)
+	}
+
 	level, err := parseLevel(cfg.Level)
 	if err != nil {
 		return &logger{}, err
@@ -39,9 +52,9 @@ func New(cfg config.LoggerConfig) (*logger, error) {
 		return &logger{}, err
 	}
 
-	zapCfg := zap.NewProductionConfig()
 	zapCfg.Level = zap.NewAtomicLevelAt(level)
 	zapCfg.Encoding = format
+	zapCfg.DisableStacktrace = true
 
 	base, err := zapCfg.Build()
 	if err != nil {

@@ -25,6 +25,7 @@ type server struct {
 type Logger interface {
 	Info(msg string, keysAndValues ...any)
 	Error(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
 }
 
 func NewServer(cfg config.ServerConfig, log Logger, h api.ServerInterface) *server {
@@ -73,6 +74,7 @@ func buildRouter(log Logger, h api.ServerInterface) http.Handler {
 	}
 
 	r := chi.NewRouter()
+	r.Use(loggerMiddleware(log))
 	r.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
 		Options: openapi3filter.Options{
 			AuthenticationFunc: authenticateRequest,

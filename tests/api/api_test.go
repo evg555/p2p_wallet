@@ -22,7 +22,7 @@ import (
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
 
-	log, err := logger.New(config.LoggerConfig{Level: "info"})
+	log, err := logger.New(config.LoggerConfig{Level: "info"}, "local")
 	require.NoError(t, err)
 
 	userRepo := repository.NewUserCacheRepo()

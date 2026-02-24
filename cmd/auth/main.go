@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	log, err := logger.New(cfg.Logger)
+	log, err := logger.New(cfg.Logger, cfg.Environment)
 	if err != nil {
 		panic(err)
 	}
