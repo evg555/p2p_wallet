@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"p2p_wallet/internal/shared/config"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func NewClient(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dsn)
+func NewClient(cfg config.PostgresConfig) (*sql.DB, error) {
+	db, err := sql.Open("pgx", buildDSN(cfg))
 	if err != nil {
 		return nil, fmt.Errorf("open postgres connection: %w", err)
 	}
@@ -24,4 +26,11 @@ func NewClient(dsn string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func buildDSN(cfg config.PostgresConfig) string {
+	// dsn = "postgres://dbuser:dbpass@localhost:5432/p2p_wallet?sslmode=disable"
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.SSLMode,
+	)
 }

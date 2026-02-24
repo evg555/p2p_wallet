@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"p2p_wallet/internal/handler"
+	"p2p_wallet/internal/infra/persistence/postgres"
 	"p2p_wallet/internal/infra/server/httpserver"
 	"p2p_wallet/internal/repository"
 	"p2p_wallet/internal/service"
@@ -45,7 +46,13 @@ func main() {
 		"time", BUILD_TIME,
 	)
 
-	userRepo := repository.NewUserPostgresRepo(cfg.Postgres)
+	postgresClient, err := postgres.NewClient(cfg.Postgres)
+	if err != nil {
+		panic(err)
+	}
+	defer postgresClient.Close() //nolint:errcheck
+
+	userRepo := repository.NewUserPostgresRepo(postgresClient)
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(log, userRepo, sessionRepo)
 	h := handler.New(userSrv)
