@@ -41,7 +41,7 @@ func TestRegister(t *testing.T) {
 		return u, nil
 	})
 
-	got, err := svc.Register(ctx, input)
+	got, err := svc.Register(ctx, &input)
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Equal(t, input.Login, got.Login)
@@ -59,7 +59,7 @@ func TestLogin(t *testing.T) {
 		repoErr := errors.New("db down")
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, repoErr)
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.Nil(t, got)
 		assert.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "failed to get user by login"))
@@ -75,7 +75,7 @@ func TestLogin(t *testing.T) {
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, errs.ErrUserNotFound)
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.Nil(t, got)
 		assert.ErrorIs(t, err, errs.ErrUserNotFound)
 	})
@@ -93,7 +93,7 @@ func TestLogin(t *testing.T) {
 			Password: "another-secret",
 		}, nil)
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.Nil(t, got)
 		assert.ErrorIs(t, err, errs.ErrPasswordMismatch)
 	})
@@ -114,7 +114,7 @@ func TestLogin(t *testing.T) {
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(user, nil)
 		sessionRepo.EXPECT().Set(int64(1), mock.Anything, sessionTTL).Return()
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.NoError(t, err)
 		assert.NotNil(t, got)
 		assert.Equal(t, int64(1), got.UserID)

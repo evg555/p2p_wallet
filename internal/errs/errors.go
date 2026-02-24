@@ -13,3 +13,12 @@ var (
 	ErrEmptyField       = errors.New("field is empty")
 	ErrFieldTooMuch     = errors.New("field is too much")
 )
+
+type APIError struct {
+	Code    int
+	Message string
+}
+
+func (e *APIError) Error() string {
+	return e.Message
+}
