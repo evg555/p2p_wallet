@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -25,6 +26,8 @@ type SessionRepo interface {
 }
 
 type Logger interface {
+	Info(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
 }
 
 type service struct {
@@ -44,24 +47,40 @@ func New(log Logger, repo UserRepo, sessionRepo SessionRepo) *service {
 func (s *service) Register(ctx context.Context, input *api.RegisterRequest) (*domain.User, error) {
 	user, err := domain.NewUser(input.Login, input.Password, input.Name, input.LastName)
 	if err != nil {
+		s.log.Warn("register failed", "login", input.Login, "error", err)
 		return nil, err
 	}
 
-	return s.userRepo.Save(ctx, user)
+	savedUser, err := s.userRepo.Save(ctx, user)
+	if err != nil {
+		if errors.Is(err, errs.ErrUserAlreadyExist) {
+			s.log.Warn("register failed", "login", input.Login, "error", err)
+		}
+		return nil, err
+	}
+
+	s.log.Info("register succeeded", "user_id", savedUser.ID, "login", savedUser.Login)
+	return savedUser, nil
 }
 
 func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.AuthResult, error) {
 	user, err := s.userRepo.GetByLogin(ctx, input.Login)
 	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			s.log.Warn("login failed", "login", input.Login, "error", err)
+		}
+
 		return nil, fmt.Errorf("userRepo: failed to get user by login: %w", err)
 	}
 
 	if !user.CheckPassword(input.Password) {
+		s.log.Warn("login failed: password mismatch", "login", input.Login, "user_id", user.ID)
 		return nil, errs.ErrPasswordMismatch
 	}
 
 	newSessionID := domain.NewSessionID()
 	s.sessionRepo.Set(user.ID, newSessionID, sessionTTL)
+	s.log.Info("login succeeded", "user_id", user.ID, "login", user.Login)
 
 	return &domain.AuthResult{
 		UserID:       user.ID,
@@ -75,19 +94,26 @@ func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.A
 func (s *service) Logout(ctx context.Context, id int64) error {
 	existSessionID, err := s.sessionRepo.Get(id)
 	if err != nil || existSessionID.IsEmpty() {
+		s.log.Warn("logout failed", "user_id", id, "error", err)
 		return errs.ErrSessionNotFound
 	}
 
 	sessionID, ok := ctx.Value(domain.CtxKey(domain.SessionKey)).(string)
 	if !ok || !existSessionID.Equal(sessionID) {
+		s.log.Warn("logout failed: access denied", "user_id", id)
 		return errs.ErrAccessDenied
 	}
 
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			s.log.Warn("logout failed", "user_id", id, "error", err)
+		}
+
 		return fmt.Errorf("userRepo: failed to get user by id: %w", err)
 	}
 
 	s.sessionRepo.Delete(user.ID)
+	s.log.Info("logout succeeded", "user_id", user.ID, "login", user.Login)
 	return nil
 }

@@ -9,6 +9,10 @@ type MockLogger struct {
 	mock.Mock
 }
 
+func (_m *MockLogger) Info(_ string, _ ...any) {}
+
+func (_m *MockLogger) Warn(_ string, _ ...any) {}
+
 type MockLogger_Expecter struct {
 	mock *mock.Mock
 }

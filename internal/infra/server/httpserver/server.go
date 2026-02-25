@@ -87,6 +87,9 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 		RequestIDMiddleware,
 		ErrorLoggingMiddleware(log),
 	}, api.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		},
 		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		},
