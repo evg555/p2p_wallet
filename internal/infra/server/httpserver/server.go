@@ -74,8 +74,8 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 	}
 
 	r := chi.NewRouter()
-	r.Use(requestIDMiddleware())
-	r.Use(accessLogMiddleware(log))
+	r.Use(AccessLogMiddleware(log))
+	r.Use(SessionMiddleware)
 
 	r.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
 		Options: openapi3filter.Options{
@@ -83,14 +83,12 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 		},
 	}))
 
-	strictHandler := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{}, api.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		},
+	strictHandler := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{
+		RequestIDMiddleware,
+		ErrorLoggingMiddleware(log),
+	}, api.StrictHTTPServerOptions{
 		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			rid := requestIDFromContext(r.Context())
-			log.Error("http request failed", "req_id", rid, "error", err)
-			writeAPIError(w, r, err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 		},
 	})
 

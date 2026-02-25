@@ -30,34 +30,31 @@ func New(srv Service) *handler {
 
 func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject) (api.LoginUserResponseObject, error) {
 	if req.Body == nil {
-		return nil, &errs.APIError{
-			Code:    http.StatusBadRequest,
+		return api.LoginUser400JSONResponse{
+			Code:    "bad request",
 			Message: "request body is required",
-		}
+		}, nil
 	}
 
 	res, err := h.userSrv.Login(ctx, req.Body)
 	if err != nil {
-		var apiErr *errs.APIError
+		var resp api.LoginUserResponseObject
 		switch true {
 		case errors.Is(err, errs.ErrUserNotFound):
-			apiErr = &errs.APIError{
-				Code:    http.StatusNotFound,
+			resp = api.LoginUser404JSONResponse{
+				Code:    "not found",
 				Message: err.Error(),
 			}
 		case errors.Is(err, errs.ErrPasswordMismatch):
-			apiErr = &errs.APIError{
-				Code:    http.StatusUnauthorized,
+			resp = api.LoginUser401JSONResponse{
+				Code:    "unauthorized",
 				Message: err.Error(),
 			}
 		default:
-			apiErr = &errs.APIError{
-				Code:    http.StatusInternalServerError,
-				Message: err.Error(),
-			}
+			return nil, err
 		}
 
-		return nil, apiErr
+		return resp, nil
 	}
 
 	resp := api.LoginUser200JSONResponse{
@@ -84,29 +81,26 @@ func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject)
 
 func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestObject) (api.RegisterUserResponseObject, error) {
 	if req.Body == nil {
-		return nil, &errs.APIError{
-			Code:    http.StatusBadRequest,
+		return api.RegisterUser400JSONResponse{
+			Code:    "bad request",
 			Message: "request body is required",
-		}
+		}, nil
 	}
 
 	user, err := h.userSrv.Register(ctx, req.Body)
 	if err != nil {
-		var apiErr *errs.APIError
+		var resp api.RegisterUserResponseObject
 		switch true {
 		case errors.Is(err, errs.ErrUserAlreadyExist):
-			apiErr = &errs.APIError{
-				Code:    http.StatusConflict,
+			resp = api.RegisterUser409JSONResponse{
+				Code:    "conflict",
 				Message: err.Error(),
 			}
 		default:
-			apiErr = &errs.APIError{
-				Code:    http.StatusInternalServerError,
-				Message: err.Error(),
-			}
+			return nil, err
 		}
 
-		return nil, apiErr
+		return resp, nil
 	}
 
 	resp := api.RegisterUser201JSONResponse{
@@ -121,45 +115,30 @@ func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestO
 }
 
 func (h *handler) LogoutUser(ctx context.Context, req api.LogoutUserRequestObject) (api.LogoutUserResponseObject, error) {
-	//c, err := req.Cookie(domain.SessionKey)
-	//if err != nil || c.Value == "" {
-	//	resp := api.LogoutUser401JSONResponse{
-	//		Code:    code,
-	//		Message: "user session is empty",
-	//	}
-	//	_ = resp.VisitLogoutUserResponse(w)
-	//	return
-	//}
-	//
-	//ctx := context.WithValue(r.Context(), domain.CtxKey(domain.SessionKey), c.Value)
-
 	err := h.userSrv.Logout(ctx, req.Id)
 	if err != nil {
-		var apiErr *errs.APIError
+		var resp api.LogoutUserResponseObject
 		switch true {
 		case errors.Is(err, errs.ErrUserNotFound):
-			apiErr = &errs.APIError{
-				Code:    http.StatusNotFound,
+			resp = api.LogoutUser404JSONResponse{
+				Code:    "not found",
 				Message: err.Error(),
 			}
 		case errors.Is(err, errs.ErrSessionNotFound):
-			apiErr = &errs.APIError{
-				Code:    http.StatusUnauthorized,
+			resp = api.LogoutUser401JSONResponse{
+				Code:    "unauthorized",
 				Message: err.Error(),
 			}
 		case errors.Is(err, errs.ErrAccessDenied):
-			apiErr = &errs.APIError{
-				Code:    http.StatusForbidden,
+			resp = api.LogoutUser403JSONResponse{
+				Code:    "access denied",
 				Message: err.Error(),
 			}
 		default:
-			apiErr = &errs.APIError{
-				Code:    http.StatusInternalServerError,
-				Message: err.Error(),
-			}
+			return nil, err
 		}
 
-		return nil, apiErr
+		return resp, nil
 	}
 
 	resp := api.LogoutUser204Response{

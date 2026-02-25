@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
+	"p2p_wallet/internal/domain"
 )
 
 type statusRecorder struct {
@@ -28,7 +28,7 @@ func (r *statusRecorder) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
-func accessLogMiddleware(log Logger) func(http.Handler) http.Handler {
+func AccessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rec := &statusRecorder{
@@ -40,9 +40,11 @@ func accessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(rec, r)
 
+			requestID, _ := r.Context().Value(requestIDKey).(string)
+
 			log.Info(
 				"http request",
-				"req_id", requestIDFromContext(r.Context()),
+				"req_id", requestID,
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", rec.status,
@@ -53,32 +55,15 @@ func accessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 	}
 }
 
-type ctxKey string
-
-const requestIDKey ctxKey = "req_id"
-
-func requestIDFromContext(ctx context.Context) string {
-	v := ctx.Value(requestIDKey)
-	s, ok := v.(string)
-	if !ok {
-		return ""
-	}
-	return s
-}
-
-func requestIDMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rid := r.Header.Get("X-Request-Id")
-			if rid == "" {
-				rid = uuid.NewString()
-			}
-
-			ctx := context.WithValue(r.Context(), requestIDKey, rid)
-			r = r.WithContext(ctx)
-
-			w.Header().Set("X-Request-Id", rid)
+func SessionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(domain.SessionKey)
+		if err != nil {
 			next.ServeHTTP(w, r)
-		})
-	}
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), domain.CtxKey(domain.SessionKey), cookie.Value)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

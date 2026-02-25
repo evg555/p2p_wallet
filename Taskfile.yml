@@ -82,7 +82,7 @@ tasks:
   api-test:
     desc: Run contracts test
     cmds:
-      - go test -v ./tests/api/...
+      - go test -v ./tests/...
 
   integration-test:
     desc: Run repo tests
