@@ -26,8 +26,8 @@ type PostgresConfig struct {
 }
 
 type ServerConfig struct {
-	Host              string        `mapstructure:"SERVER_HOST"`
-	Port              string        `mapstructure:"SERVER_PORT"`
+	Host              string        `mapstructure:"HTTP_HOST"`
+	Port              string        `mapstructure:"HTTP_PORT"`
 	ReadHeaderTimeout time.Duration `mapstructure:"READ_HEADER_TIMEOUT"`
 	ReadTimeout       time.Duration `mapstructure:"READ_TIMEOUT"`
 }
@@ -64,8 +64,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("DB_HOST", "localhost")
 	v.SetDefault("DB_PORT", "5432")
 	v.SetDefault("DB_SSLMODE", "disable")
-	v.SetDefault("SERVER_HOST", "localhost")
-	v.SetDefault("SERVER_PORT", "8080")
+	v.SetDefault("HTTP_HOST", "localhost")
+	v.SetDefault("HTTP_PORT", "8080")
 	v.SetDefault("READ_HEADER_TIMEOUT", "5s")
 	v.SetDefault("READ_TIMEOUT", "5s")
 	v.SetDefault("ENV", "local")

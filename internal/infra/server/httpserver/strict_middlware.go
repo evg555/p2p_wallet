@@ -17,6 +17,7 @@ func RequestIDMiddleware(f api.StrictHandlerFunc, operationID string) api.Strict
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, args interface{}) (interface{}, error) {
 		requestID := uuid.New().String()
 		ctx = context.WithValue(ctx, requestIDKey, requestID)
+		r = r.WithContext(context.WithValue(r.Context(), requestIDKey, requestID))
 		w.Header().Set("X-Request-ID", requestID)
 		return f(ctx, w, r, args)
 	}
@@ -31,7 +32,7 @@ func ErrorLoggingMiddleware(log Logger) api.StrictMiddlewareFunc {
 				log.Error("handler error",
 					"operation", operationID,
 					"request_id", requestID,
-					"error", err,
+					"error", err.Error(),
 				)
 			}
 			return resp, err

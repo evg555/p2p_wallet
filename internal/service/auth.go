@@ -47,14 +47,14 @@ func New(log Logger, repo UserRepo, sessionRepo SessionRepo) *service {
 func (s *service) Register(ctx context.Context, input *api.RegisterRequest) (*domain.User, error) {
 	user, err := domain.NewUser(input.Login, input.Password, input.Name, input.LastName)
 	if err != nil {
-		s.log.Warn("register failed", "login", input.Login, "error", err)
+		s.log.Warn("register failed", "login", input.Login, "error", err.Error())
 		return nil, err
 	}
 
 	savedUser, err := s.userRepo.Save(ctx, user)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserAlreadyExist) {
-			s.log.Warn("register failed", "login", input.Login, "error", err)
+			s.log.Warn("register failed", "login", input.Login, "error", err.Error())
 		}
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.A
 	user, err := s.userRepo.GetByLogin(ctx, input.Login)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
-			s.log.Warn("login failed", "login", input.Login, "error", err)
+			s.log.Warn("login failed", "login", input.Login, "error", err.Error())
 		}
 
 		return nil, fmt.Errorf("userRepo: failed to get user by login: %w", err)
@@ -94,7 +94,7 @@ func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.A
 func (s *service) Logout(ctx context.Context, id int64) error {
 	existSessionID, err := s.sessionRepo.Get(id)
 	if err != nil || existSessionID.IsEmpty() {
-		s.log.Warn("logout failed", "user_id", id, "error", err)
+		s.log.Warn("logout failed", "user_id", id, "error", "session not found")
 		return errs.ErrSessionNotFound
 	}
 
@@ -107,7 +107,7 @@ func (s *service) Logout(ctx context.Context, id int64) error {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
-			s.log.Warn("logout failed", "user_id", id, "error", err)
+			s.log.Warn("logout failed", "user_id", id, "error", err.Error())
 		}
 
 		return fmt.Errorf("userRepo: failed to get user by id: %w", err)

@@ -48,7 +48,7 @@ func AccessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", rec.status,
-				"dur", time.Since(start),
+				"dur", time.Since(start).String(),
 				"bytes", rec.bytes,
 			)
 		})

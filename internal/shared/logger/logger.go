@@ -2,24 +2,23 @@ package logger
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
+	"time"
 
 	"p2p_wallet/internal/shared/config"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"github.com/rs/zerolog"
 )
 
 var (
 	FormatText = "console"
 	FormatJSON = "json"
-
-	EnvDev  = "local"
-	EnvProd = "production"
 )
 
 type logger struct {
-	log *zap.SugaredLogger
+	log *zerolog.Logger
 }
 
 type Logger interface {
@@ -31,81 +30,108 @@ type Logger interface {
 	With(keysAndValues ...any) *logger
 }
 
-func New(cfg config.LoggerConfig, env string) (*logger, error) {
-	var zapCfg zap.Config
-	switch env {
-	case EnvDev:
-		zapCfg = zap.NewDevelopmentConfig()
-	case EnvProd:
-		zapCfg = zap.NewProductionConfig()
-	default:
-		return &logger{}, fmt.Errorf("unknown environment %q", env)
-	}
+func New(cfg config.LoggerConfig) (*logger, error) {
+	zerolog.TimeFieldFormat = time.RFC3339Nano
 
 	level, err := parseLevel(cfg.Level)
 	if err != nil {
 		return &logger{}, err
 	}
 
+	zerolog.SetGlobalLevel(level)
+
 	format, err := parseFormat(cfg.Format)
 	if err != nil {
 		return &logger{}, err
 	}
 
-	zapCfg.Level = zap.NewAtomicLevelAt(level)
-	zapCfg.Encoding = format
-	zapCfg.DisableStacktrace = true
-
-	base, err := zapCfg.Build()
-	if err != nil {
-		return &logger{}, fmt.Errorf("build zap logger: %w", err)
+	var output io.Writer = os.Stdout
+	if format == FormatText {
+		output = zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: time.RFC3339Nano,
+		}
 	}
 
-	return &logger{log: base.Sugar()}, nil
+	log := zerolog.New(output).With().Timestamp().Logger()
+
+	return &logger{log: &log}, nil
 }
 
 func (l *logger) Debug(msg string, keysAndValues ...any) {
-	l.log.Debugw(msg, keysAndValues...)
+	event := l.log.Debug()
+	appendFields(event, keysAndValues...)
+	event.Msg(msg)
 }
 
 func (l *logger) Info(msg string, keysAndValues ...any) {
-	l.log.Infow(msg, keysAndValues...)
+	event := l.log.Info()
+	appendFields(event, keysAndValues...)
+	event.Msg(msg)
 }
 
 func (l *logger) Warn(msg string, keysAndValues ...any) {
-	l.log.Warnw(msg, keysAndValues...)
+	event := l.log.Warn()
+	appendFields(event, keysAndValues...)
+	event.Msg(msg)
 }
 
 func (l *logger) Error(msg string, keysAndValues ...any) {
-	l.log.Errorw(msg, keysAndValues...)
+	event := l.log.Error()
+	appendFields(event, keysAndValues...)
+	event.Msg(msg)
 }
 
 func (l *logger) Sync() error {
-	return l.log.Sync()
+	return nil
 }
 
 func (l *logger) With(keysAndValues ...any) *logger {
-	return &logger{log: l.log.With(keysAndValues...)}
+	ctx := l.log.With()
+
+	for i := 0; i+1 < len(keysAndValues); i += 2 {
+		key, ok := keysAndValues[i].(string)
+		if !ok {
+			continue
+		}
+		ctx = ctx.Interface(key, keysAndValues[i+1])
+	}
+
+	if len(keysAndValues)%2 != 0 {
+		last := keysAndValues[len(keysAndValues)-1]
+		ctx = ctx.Interface("extra", last)
+	}
+
+	child := ctx.Logger()
+	return &logger{log: &child}
 }
 
-func parseLevel(raw string) (zapcore.Level, error) {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "", "info":
-		return zap.InfoLevel, nil
-	case "debug":
-		return zap.DebugLevel, nil
-	case "warn":
-		return zap.WarnLevel, nil
-	case "error":
-		return zap.ErrorLevel, nil
-	default:
-		return 0, fmt.Errorf("unsupported log level %q, allowed: debug/info/warn/error", raw)
+func appendFields(event *zerolog.Event, keysAndValues ...any) {
+	for i := 0; i+1 < len(keysAndValues); i += 2 {
+		key := fmt.Sprint(keysAndValues[i])
+		value := fmt.Sprint(keysAndValues[i+1])
+		event.Str(key, value)
 	}
+
+	if len(keysAndValues)%2 != 0 {
+		last := keysAndValues[len(keysAndValues)-1]
+		event.Str("extra", fmt.Sprint(last))
+	}
+}
+
+func parseLevel(raw string) (zerolog.Level, error) {
+
+	level, err := zerolog.ParseLevel(raw)
+	if err != nil {
+		return zerolog.NoLevel, fmt.Errorf("invalid log level %s: %w", raw, err)
+	}
+
+	return level, nil
 }
 
 func parseFormat(raw string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "", "text":
+	case "", "text", "console":
 		return FormatText, nil
 	case "json":
 		return FormatJSON, nil

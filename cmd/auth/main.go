@@ -31,19 +31,18 @@ func main() {
 		panic(err)
 	}
 
-	log, err := logger.New(cfg.Logger, cfg.Environment)
+	log, err := logger.New(cfg.Logger)
 	if err != nil {
 		panic(err)
 	}
 	defer log.Sync() //nolint:errcheck
 
-	log = log.With("version", VERSION).
-		With("env", cfg.Environment)
+	log = log.With("version", VERSION).With("env", cfg.Environment)
 
 	log.Info(
 		"build info",
 		"commit_sha", COMMIT_SHA,
-		"time", BUILD_TIME,
+		"build_time", BUILD_TIME,
 	)
 
 	postgresClient, err := postgres.NewClient(cfg.Postgres)
