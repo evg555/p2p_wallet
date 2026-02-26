@@ -1,7 +1,7 @@
 @host = http://localhost:8080
 @contentType = application/json
-@userId = 20
-@sessionId = 019c94c3-3651-7943-8e3c-ccf7bd3ef694
+@userId = 22
+@sessionId = 019c94f1-447d-70a1-8ce0-9da84ac8db72
 
 ### Регистрация пользователя
 POST {{host}}/users/register

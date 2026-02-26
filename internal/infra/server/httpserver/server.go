@@ -74,6 +74,7 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 	}
 
 	r := chi.NewRouter()
+	r.Use(RequestIDMiddleware)
 	r.Use(AccessLogMiddleware(log))
 	r.Use(SessionMiddleware)
 
@@ -84,7 +85,6 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 	}))
 
 	strictHandler := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{
-		RequestIDMiddleware,
 		ErrorLoggingMiddleware(log),
 	}, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {

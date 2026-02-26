@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/shared/requestctx"
+
+	"github.com/google/uuid"
 )
 
 type statusRecorder struct {
@@ -28,6 +31,21 @@ func (r *statusRecorder) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
+func RequestIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+
+		ctx := requestctx.WithRequestID(r.Context(), requestID)
+		r = r.WithContext(ctx)
+		w.Header().Set("X-Request-ID", requestID)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func AccessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +58,7 @@ func AccessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(rec, r)
 
-			requestID, _ := r.Context().Value(requestIDKey).(string)
+			requestID := requestctx.RequestID(r.Context())
 
 			log.Info(
 				"http request",

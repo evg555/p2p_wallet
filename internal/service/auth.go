@@ -9,6 +9,7 @@ import (
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/errs"
+	"p2p_wallet/internal/shared/requestctx"
 )
 
 var sessionTTL = 1 * time.Hour
@@ -47,19 +48,19 @@ func New(log Logger, repo UserRepo, sessionRepo SessionRepo) *service {
 func (s *service) Register(ctx context.Context, input *api.RegisterRequest) (*domain.User, error) {
 	user, err := domain.NewUser(input.Login, input.Password, input.Name, input.LastName)
 	if err != nil {
-		s.log.Warn("register failed", "login", input.Login, "error", err.Error())
+		s.log.Warn("user register failed", withReqID(ctx, "login", input.Login, "error", err.Error())...)
 		return nil, err
 	}
 
 	savedUser, err := s.userRepo.Save(ctx, user)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserAlreadyExist) {
-			s.log.Warn("register failed", "login", input.Login, "error", err.Error())
+			s.log.Warn("user register failed", withReqID(ctx, "login", input.Login, "error", err.Error())...)
 		}
 		return nil, err
 	}
 
-	s.log.Info("register succeeded", "user_id", savedUser.ID, "login", savedUser.Login)
+	s.log.Info("user register succeeded", withReqID(ctx, "user_id", savedUser.ID, "login", savedUser.Login)...)
 	return savedUser, nil
 }
 
@@ -67,20 +68,20 @@ func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.A
 	user, err := s.userRepo.GetByLogin(ctx, input.Login)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
-			s.log.Warn("login failed", "login", input.Login, "error", err.Error())
+			s.log.Warn("user login failed", withReqID(ctx, "login", input.Login, "error", err.Error())...)
 		}
 
 		return nil, fmt.Errorf("userRepo: failed to get user by login: %w", err)
 	}
 
 	if !user.CheckPassword(input.Password) {
-		s.log.Warn("login failed: password mismatch", "login", input.Login, "user_id", user.ID)
+		s.log.Warn("user login failed: password mismatch", withReqID(ctx, "login", input.Login, "user_id", user.ID)...)
 		return nil, errs.ErrPasswordMismatch
 	}
 
 	newSessionID := domain.NewSessionID()
 	s.sessionRepo.Set(user.ID, newSessionID, sessionTTL)
-	s.log.Info("login succeeded", "user_id", user.ID, "login", user.Login)
+	s.log.Info("user login succeeded", withReqID(ctx, "user_id", user.ID, "login", user.Login)...)
 
 	return &domain.AuthResult{
 		UserID:       user.ID,
@@ -94,26 +95,39 @@ func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.A
 func (s *service) Logout(ctx context.Context, id int64) error {
 	existSessionID, err := s.sessionRepo.Get(id)
 	if err != nil || existSessionID.IsEmpty() {
-		s.log.Warn("logout failed", "user_id", id, "error", "session not found")
+		s.log.Warn("user logout failed", withReqID(ctx, "user_id", id, "error", "session not found")...)
 		return errs.ErrSessionNotFound
 	}
 
 	sessionID, ok := ctx.Value(domain.CtxKey(domain.SessionKey)).(string)
 	if !ok || !existSessionID.Equal(sessionID) {
-		s.log.Warn("logout failed: access denied", "user_id", id)
+		s.log.Warn("user logout failed: access denied", withReqID(ctx, "user_id", id)...)
 		return errs.ErrAccessDenied
 	}
 
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
-			s.log.Warn("logout failed", "user_id", id, "error", err.Error())
+			s.log.Warn("user logout failed", withReqID(ctx, "user_id", id, "error", err.Error())...)
 		}
 
 		return fmt.Errorf("userRepo: failed to get user by id: %w", err)
 	}
 
 	s.sessionRepo.Delete(user.ID)
-	s.log.Info("logout succeeded", "user_id", user.ID, "login", user.Login)
+	s.log.Info("user logout succeeded", withReqID(ctx, "user_id", user.ID, "login", user.Login)...)
 	return nil
+}
+
+func withReqID(ctx context.Context, keysAndValues ...any) []any {
+	requestID := requestctx.RequestID(ctx)
+	if requestID == "" {
+		return keysAndValues
+	}
+
+	out := make([]any, 0, len(keysAndValues)+2)
+	out = append(out, keysAndValues...)
+	out = append(out, "req_id", requestID)
+
+	return out
 }
