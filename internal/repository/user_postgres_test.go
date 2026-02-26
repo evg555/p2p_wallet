@@ -13,6 +13,7 @@ import (
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/errs"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
@@ -137,7 +138,13 @@ func newPostgresRepoForIntegration(t *testing.T) (context.Context, *userPostgres
 	require.NoError(t, db.PingContext(ctx))
 	require.NoError(t, applyAllMigrations(t, db))
 
-	return ctx, &userPostgresRepo{client: db}
+	pool, err := pgxpool.New(ctx, dsn)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	require.NoError(t, pool.Ping(ctx))
+
+	return ctx, &userPostgresRepo{client: pool}
 }
 
 func applyAllMigrations(t *testing.T, db *sql.DB) error {

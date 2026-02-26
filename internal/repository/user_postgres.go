@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
@@ -11,13 +10,15 @@ import (
 	"p2p_wallet/internal/service"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var _ service.UserRepo = (*userPostgresRepo)(nil)
 
 type userPostgresRepo struct {
-	client *sql.DB
+	client *pgxpool.Pool
 }
 
 func (r *userPostgresRepo) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
@@ -32,7 +33,7 @@ func (r *userPostgresRepo) Save(ctx context.Context, user *domain.User) (*domain
 	}
 
 	savedUser := &domain.User{}
-	err = r.client.QueryRowContext(
+	err = r.client.QueryRow(
 		ctx,
 		query,
 		args...,
@@ -68,7 +69,7 @@ func (r *userPostgresRepo) GetByLogin(ctx context.Context, login string) (*domai
 	}
 
 	user := &domain.User{}
-	err = r.client.QueryRowContext(ctx, query, args...).Scan(
+	err = r.client.QueryRow(ctx, query, args...).Scan(
 		&user.ID,
 		&user.FirstName,
 		&user.LastName,
@@ -77,7 +78,7 @@ func (r *userPostgresRepo) GetByLogin(ctx context.Context, login string) (*domai
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errs.ErrUserNotFound
 	}
 	if err != nil {
@@ -98,7 +99,7 @@ func (r *userPostgresRepo) GetByID(ctx context.Context, id int64) (*domain.User,
 	}
 
 	user := &domain.User{}
-	err = r.client.QueryRowContext(ctx, query, args...).Scan(
+	err = r.client.QueryRow(ctx, query, args...).Scan(
 		&user.ID,
 		&user.FirstName,
 		&user.LastName,
@@ -107,7 +108,7 @@ func (r *userPostgresRepo) GetByID(ctx context.Context, id int64) (*domain.User,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errs.ErrUserNotFound
 	}
 	if err != nil {
@@ -117,7 +118,7 @@ func (r *userPostgresRepo) GetByID(ctx context.Context, id int64) (*domain.User,
 	return user, nil
 }
 
-func NewUserPostgresRepo(client *sql.DB) *userPostgresRepo {
+func NewUserPostgresRepo(client *pgxpool.Pool) *userPostgresRepo {
 	return &userPostgresRepo{
 		client: client,
 	}
