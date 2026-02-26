@@ -56,7 +56,11 @@ func newHTTPMetrics() *httpMetrics {
 }
 
 func (m *httpMetrics) Handler() http.Handler {
-	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
+	gatherers := prometheus.Gatherers{
+		m.registry,
+		prometheus.DefaultGatherer,
+	}
+	return promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{})
 }
 
 func (m *httpMetrics) Middleware(next http.Handler) http.Handler {

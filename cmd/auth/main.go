@@ -51,7 +51,8 @@ func main() {
 	}
 	defer postgresClient.Close() //nolint:errcheck
 
-	userRepo := repository.NewUserPostgresRepo(postgresClient)
+	var userRepo service.UserRepo = repository.NewUserPostgresRepo(postgresClient)
+	userRepo = repository.NewUserRepoWithMetrics(userRepo)
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(log, userRepo, sessionRepo)
 	h := handler.New(userSrv)
