@@ -73,12 +73,18 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 		log.Error("validate openapi", "error", err)
 	}
 
-	r := chi.NewRouter()
-	r.Use(RequestIDMiddleware)
-	r.Use(AccessLogMiddleware(log))
-	r.Use(SessionMiddleware)
+	metrics := newHTTPMetrics()
 
-	r.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+	router := chi.NewRouter()
+	router.Use(RequestIDMiddleware)
+	router.Use(metrics.Middleware)
+	router.Use(AccessLogMiddleware(log))
+	router.Use(SessionMiddleware)
+
+	router.Method(http.MethodGet, "/metric", metrics.Handler())
+
+	apiRouter := chi.NewRouter()
+	apiRouter.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
 		Options: openapi3filter.Options{
 			AuthenticationFunc: authenticateRequest,
 		},
@@ -95,7 +101,9 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 		},
 	})
 
-	return api.HandlerFromMux(strictHandler, r)
+	router.Mount("/", api.HandlerFromMux(strictHandler, apiRouter))
+
+	return router
 }
 
 func authenticateRequest(_ context.Context, ai *openapi3filter.AuthenticationInput) error {
