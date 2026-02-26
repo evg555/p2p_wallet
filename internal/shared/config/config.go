@@ -14,6 +14,7 @@ type Config struct {
 	Logger       LoggerConfig   `mapstructure:",squash"`
 	Postgres     PostgresConfig `mapstructure:",squash"`
 	ServerConfig ServerConfig   `mapstructure:",squash"`
+	Tracing      TracingConfig  `mapstructure:",squash"`
 }
 
 type PostgresConfig struct {
@@ -35,6 +36,15 @@ type ServerConfig struct {
 type LoggerConfig struct {
 	Level  string `mapstructure:"LOG_LEVEL"`
 	Format string `mapstructure:"LOG_FORMAT"`
+}
+
+type TracingConfig struct {
+	Enabled    bool    `mapstructure:"TRACING_ENABLED"`
+	Endpoint   string  `mapstructure:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	Protocol   string  `mapstructure:"OTEL_EXPORTER_OTLP_PROTOCOL"`
+	Insecure   bool    `mapstructure:"OTEL_EXPORTER_OTLP_INSECURE"`
+	Sampler    string  `mapstructure:"OTEL_TRACES_SAMPLER"`
+	SamplerArg float64 `mapstructure:"OTEL_TRACES_SAMPLER_ARG"`
 }
 
 func Load() (Config, error) {
@@ -69,6 +79,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("READ_HEADER_TIMEOUT", "5s")
 	v.SetDefault("READ_TIMEOUT", "5s")
 	v.SetDefault("ENV", "local")
+	v.SetDefault("TRACING_ENABLED", false)
+	v.SetDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	v.SetDefault("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")
+	v.SetDefault("OTEL_EXPORTER_OTLP_INSECURE", true)
+	v.SetDefault("OTEL_TRACES_SAMPLER", "parentbased_traceidratio")
+	v.SetDefault("OTEL_TRACES_SAMPLER_ARG", 1.0)
 }
 
 func readConfig(v *viper.Viper) error {

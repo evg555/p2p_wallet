@@ -14,6 +14,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/go-chi/chi/v5"
 	middleware "github.com/oapi-codegen/nethttp-middleware"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type server struct {
@@ -91,6 +92,7 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 	}))
 
 	strictHandler := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{
+		TracingMiddleware(),
 		ErrorLoggingMiddleware(log),
 	}, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
@@ -103,7 +105,13 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 
 	router.Mount("/", api.HandlerFromMux(strictHandler, apiRouter))
 
-	return router
+	return otelhttp.NewHandler(
+		router,
+		"http.request",
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return r.Method + " " + routePattern(r)
+		}),
+	)
 }
 
 func authenticateRequest(_ context.Context, ai *openapi3filter.AuthenticationInput) error {

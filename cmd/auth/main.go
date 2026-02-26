@@ -16,6 +16,7 @@ import (
 	"p2p_wallet/internal/service"
 	"p2p_wallet/internal/shared/config"
 	"p2p_wallet/internal/shared/logger"
+	"p2p_wallet/internal/shared/tracing"
 )
 
 // Example: VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo unknown) COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build
@@ -45,6 +46,16 @@ func main() {
 		"build_time", BUILD_TIME,
 	)
 
+	traceShutdown, err := tracing.Init(context.Background(), cfg.Tracing, "p2p-wallet", VERSION, cfg.Environment)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = traceShutdown(shutdownCtx)
+	}()
+
 	postgresClient, err := postgres.NewClient(cfg.Postgres)
 	if err != nil {
 		panic(err)
@@ -52,6 +63,7 @@ func main() {
 	defer postgresClient.Close() //nolint:errcheck
 
 	var userRepo service.UserRepo = repository.NewUserPostgresRepo(postgresClient)
+	userRepo = repository.NewUserRepoWithTracing(userRepo)
 	userRepo = repository.NewUserRepoWithMetrics(userRepo)
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(log, userRepo, sessionRepo)

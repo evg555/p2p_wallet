@@ -9,6 +9,8 @@ import (
 	"p2p_wallet/internal/shared/requestctx"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type statusRecorder struct {
@@ -39,6 +41,9 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := requestctx.WithRequestID(r.Context(), requestID)
+		if span := trace.SpanFromContext(ctx); span.IsRecording() {
+			span.SetAttributes(attribute.String("request.id", requestID))
+		}
 		r = r.WithContext(ctx)
 		w.Header().Set("X-Request-ID", requestID)
 
