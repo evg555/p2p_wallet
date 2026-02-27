@@ -9,5 +9,7 @@ mockname: "Mock{{.InterfaceName}}"
 packages:
   p2p_wallet/internal/service:
     interfaces:
+      Logger:
       UserRepo:
       SessionRepo:
+

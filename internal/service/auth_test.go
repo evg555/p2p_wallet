@@ -20,7 +20,8 @@ func TestRegister(t *testing.T) {
 	ctx := context.Background()
 	userRepo := mocks.NewMockUserRepo(t)
 	sessionRepo := mocks.NewMockSessionRepo(t)
-	svc := New(userRepo, sessionRepo)
+	logger := mocks.NewMockLogger(t)
+	svc := New(logger, userRepo, sessionRepo)
 
 	input := api.RegisterRequest{
 		Login:    "john",
@@ -40,7 +41,7 @@ func TestRegister(t *testing.T) {
 		return u, nil
 	})
 
-	got, err := svc.Register(ctx, input)
+	got, err := svc.Register(ctx, &input)
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Equal(t, input.Login, got.Login)
@@ -52,12 +53,13 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db down")
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, repoErr)
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.Nil(t, got)
 		assert.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "failed to get user by login"))
@@ -68,11 +70,12 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, nil)
+		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, errs.ErrUserNotFound)
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.Nil(t, got)
 		assert.ErrorIs(t, err, errs.ErrUserNotFound)
 	})
@@ -81,7 +84,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(&domain.User{
 			ID:       1,
@@ -89,7 +93,7 @@ func TestLogin(t *testing.T) {
 			Password: "another-secret",
 		}, nil)
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.Nil(t, got)
 		assert.ErrorIs(t, err, errs.ErrPasswordMismatch)
 	})
@@ -98,7 +102,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		user, err := domain.NewUser("john", "secret", "John", "Doe")
 		assert.NoError(t, err)
@@ -109,7 +114,7 @@ func TestLogin(t *testing.T) {
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(user, nil)
 		sessionRepo.EXPECT().Set(int64(1), mock.Anything, sessionTTL).Return()
 
-		got, err := svc.Login(ctx, api.LoginRequest{Login: "john", Password: "secret"})
+		got, err := svc.Login(ctx, &api.LoginRequest{Login: "john", Password: "secret"})
 		assert.NoError(t, err)
 		assert.NotNil(t, got)
 		assert.Equal(t, int64(1), got.UserID)
@@ -123,7 +128,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("", errors.New("cache fail"))
 
@@ -135,7 +141,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "ctx-session")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("stored-session", nil)
 
@@ -147,7 +154,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db fail")
 		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
@@ -163,10 +171,11 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, nil)
+		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
 
 		err := svc.Logout(ctx, 1)
 		assert.ErrorIs(t, err, errs.ErrUserNotFound)
@@ -176,7 +185,8 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		svc := New(userRepo, sessionRepo)
+		logger := mocks.NewMockLogger(t)
+		svc := New(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)

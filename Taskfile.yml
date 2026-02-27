@@ -7,6 +7,7 @@ tasks:
       - { task: install-lint }
       - { task: install-oapi-gen }
       - { task: install-mockery }
+      - { task: install-goose }
 
   install-lint:
     desc: Install golangci-lint to ./bin if missing
@@ -24,6 +25,15 @@ tasks:
       - |
         if [ ! -x ./bin/oapi-codegen ]; then
           GOBIN="$(pwd)/bin" go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+        fi
+
+  install-goose:
+    desc: Install goose to ./bin if missing
+    cmds:
+      - mkdir -p bin
+      - |
+        if [ ! -x ./bin/goose ]; then
+          GOBIN="$(pwd)/bin" go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
         fi
 
   install-mockery:
@@ -67,12 +77,17 @@ tasks:
   unit-test:
     desc: Run unit tests
     cmds:
-      - go test -cover ./internal/service/... ./internal/domain/...
+      - go test -cover ./internal/service/... ./internal/domain/... ./internal/infra/...
 
   api-test:
-    desc: Run api teste
+    desc: Run contracts test
     cmds:
-      - go test -v ./tests/api/...
+      - go test -v ./tests/...
+
+  integration-test:
+    desc: Run repo tests
+    cmds:
+      - go test -v ./internal/repository/...
 
   check:
     desc: Check stability
@@ -80,6 +95,7 @@ tasks:
       - { task: check-generated }
       - { task: lint }
       - { task: unit-test }
+      - { task: integration-test }
       - { task: api-test }
       - { task: build }
 
@@ -88,9 +104,41 @@ tasks:
     deps:
       - build
     cmds:
-      - ./bin/app
+      - ./bin/auth
 
   build:
     desc: Build application
     cmds:
-      - go build -o ./bin/app cmd/app/main.go
+      - go build -o ./bin/auth cmd/auth/main.go
+
+
+  docker-run:
+    desc: Run application in docker
+    cmds:
+      - |
+        set -a
+        . ./.env
+        set +a
+        VERSION=${VERSION} COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose up --build --force-recreate -d auth
+
+  migrate-up:
+    desc: Apply goose migrations
+    deps:
+      - install-goose
+    cmds:
+      - |
+        set -a
+        . ./.env
+        set +a
+        ./bin/goose -dir ./migration/auth postgres "host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASS} dbname=${DB_DATABASE} sslmode=${DB_SSLMODE}" up
+
+  migrate-down:
+    desc: Rollback goose migration
+    deps:
+      - install-goose
+    cmds:
+      - |
+        set -a
+        . ./.env
+        set +a
+        ./bin/goose -dir ./migration/auth postgres "host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASS} dbname=${DB_DATABASE} sslmode=${DB_SSLMODE}" down

@@ -1,7 +1,7 @@
 @host = http://localhost:8080
 @contentType = application/json
-@userId = 4138540981987513
-@sessionId = abc123
+@userId = 22
+@sessionId = 019c94f1-447d-70a1-8ce0-9da84ac8db72
 
 ### Регистрация пользователя
 POST {{host}}/users/register
@@ -23,16 +23,8 @@ Content-Type: {{contentType}}
   "password": "qwerty123"
 }
 
-### Получить пользователя по id (нужна cookie session_id)
-GET {{host}}/users/{{userId}}
-Cookie: session_id={{sessionId}}
-
 ### Логаут пользователя (нужна cookie session_id)
 POST {{host}}/users/{{userId}}/logout
-Cookie: session_id={{sessionId}}
-
-### Пример ошибки: несуществующий пользователь
-GET {{host}}/users/999999
 Cookie: session_id={{sessionId}}
 
 ### Пример ошибки логина: неверный пароль

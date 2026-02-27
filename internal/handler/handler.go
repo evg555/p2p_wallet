@@ -3,7 +3,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -14,8 +13,8 @@ import (
 )
 
 type Service interface {
-	Register(ctx context.Context, input api.RegisterRequest) (*domain.User, error)
-	Login(ctx context.Context, input api.LoginRequest) (*domain.AuthResult, error)
+	Register(ctx context.Context, input *api.RegisterRequest) (*domain.User, error)
+	Login(ctx context.Context, input *api.LoginRequest) (*domain.AuthResult, error)
 	Logout(ctx context.Context, id int64) error
 }
 
@@ -23,46 +22,39 @@ type handler struct {
 	userSrv Service
 }
 
-var _ api.ServerInterface = (*handler)(nil)
+var _ api.StrictServerInterface = (*handler)(nil)
 
 func New(srv Service) *handler {
 	return &handler{userSrv: srv}
 }
 
-func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
-	var req api.LoginRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		resp := api.LoginUser400JSONResponse{
-			Code:    "wrong parameters",
-			Message: err.Error(),
-		}
-		_ = resp.VisitLoginUserResponse(w)
-		return
+func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject) (api.LoginUserResponseObject, error) {
+	if req.Body == nil {
+		return api.LoginUser400JSONResponse{
+			Code:    "bad request",
+			Message: "request body is required",
+		}, nil
 	}
 
-	res, err := h.userSrv.Login(r.Context(), req)
+	res, err := h.userSrv.Login(ctx, req.Body)
 	if err != nil {
-		code := "cannot login user"
+		var resp api.LoginUserResponseObject
 		switch true {
 		case errors.Is(err, errs.ErrUserNotFound):
-			resp := api.LoginUser404JSONResponse{
-				Code:    code,
+			resp = api.LoginUser404JSONResponse{
+				Code:    "not found",
 				Message: err.Error(),
 			}
-			_ = resp.VisitLoginUserResponse(w)
 		case errors.Is(err, errs.ErrPasswordMismatch):
-			resp := api.LoginUser401JSONResponse{
-				Code:    code,
+			resp = api.LoginUser401JSONResponse{
+				Code:    "unauthorized",
 				Message: err.Error(),
 			}
-			_ = resp.VisitLoginUserResponse(w)
 		default:
-			_ = response500Error(w, code, err)
+			return nil, err
 		}
 
-		return
+		return resp, nil
 	}
 
 	resp := api.LoginUser200JSONResponse{
@@ -84,36 +76,31 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	_ = resp.VisitLoginUserResponse(w)
+	return resp, nil
 }
 
-func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var req api.RegisterRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		resp := api.RegisterUser400JSONResponse{
-			Code:    "wrong parameters",
-			Message: err.Error(),
-		}
-		_ = resp.VisitRegisterUserResponse(w)
-		return
+func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestObject) (api.RegisterUserResponseObject, error) {
+	if req.Body == nil {
+		return api.RegisterUser400JSONResponse{
+			Code:    "bad request",
+			Message: "request body is required",
+		}, nil
 	}
 
-	user, err := h.userSrv.Register(r.Context(), req)
+	user, err := h.userSrv.Register(ctx, req.Body)
 	if err != nil {
-		code := "cannot create user"
+		var resp api.RegisterUserResponseObject
 		switch true {
 		case errors.Is(err, errs.ErrUserAlreadyExist):
-			resp := api.RegisterUser409JSONResponse{
-				Code:    code,
+			resp = api.RegisterUser409JSONResponse{
+				Code:    "conflict",
 				Message: err.Error(),
 			}
-			_ = resp.VisitRegisterUserResponse(w)
 		default:
-			_ = response500Error(w, code, err)
+			return nil, err
 		}
-		return
+
+		return resp, nil
 	}
 
 	resp := api.RegisterUser201JSONResponse{
@@ -123,58 +110,35 @@ func (h *handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		Login:     user.Login,
 		Name:      user.FirstName,
 	}
-	_ = resp.VisitRegisterUserResponse(w)
+
+	return resp, nil
 }
 
-func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.UserId) {
-	if id <= 0 {
-		resp := api.LogoutUser400JSONResponse{
-			Code:    "invalid user id",
-			Message: "id must be greater than zero",
-		}
-		_ = resp.VisitLogoutUserResponse(w)
-		return
-	}
-
-	code := "cannot logout user"
-
-	c, err := r.Cookie(domain.SessionKey)
-	if err != nil || c.Value == "" {
-		resp := api.LogoutUser401JSONResponse{
-			Code:    code,
-			Message: "user session is empty",
-		}
-		_ = resp.VisitLogoutUserResponse(w)
-		return
-	}
-
-	ctx := context.WithValue(r.Context(), domain.CtxKey(domain.SessionKey), c.Value)
-
-	err = h.userSrv.Logout(ctx, id)
+func (h *handler) LogoutUser(ctx context.Context, req api.LogoutUserRequestObject) (api.LogoutUserResponseObject, error) {
+	err := h.userSrv.Logout(ctx, req.Id)
 	if err != nil {
+		var resp api.LogoutUserResponseObject
 		switch true {
 		case errors.Is(err, errs.ErrUserNotFound):
-			resp := api.LogoutUser404JSONResponse{
-				Code:    code,
+			resp = api.LogoutUser404JSONResponse{
+				Code:    "not found",
 				Message: err.Error(),
 			}
-			_ = resp.VisitLogoutUserResponse(w)
 		case errors.Is(err, errs.ErrSessionNotFound):
-			resp := api.LogoutUser401JSONResponse{
-				Code:    code,
+			resp = api.LogoutUser401JSONResponse{
+				Code:    "unauthorized",
 				Message: err.Error(),
 			}
-			_ = resp.VisitLogoutUserResponse(w)
 		case errors.Is(err, errs.ErrAccessDenied):
-			resp := api.LogoutUser403JSONResponse{
-				Code:    code,
+			resp = api.LogoutUser403JSONResponse{
+				Code:    "access denied",
 				Message: err.Error(),
 			}
-			_ = resp.VisitLogoutUserResponse(w)
 		default:
-			_ = response500Error(w, code, err)
+			return nil, err
 		}
-		return
+
+		return resp, nil
 	}
 
 	resp := api.LogoutUser204Response{
@@ -190,17 +154,6 @@ func (h *handler) LogoutUser(w http.ResponseWriter, r *http.Request, id api.User
 			}).String(),
 		},
 	}
-	_ = resp.VisitLogoutUserResponse(w)
-}
 
-func response500Error(w http.ResponseWriter, code string, err error) error {
-	response := api.ErrorResponse{
-		Code:    code,
-		Message: err.Error(),
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
-
-	return json.NewEncoder(w).Encode(response)
-
+	return resp, nil
 }
