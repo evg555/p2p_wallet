@@ -65,7 +65,7 @@ func (m *httpMetrics) Handler() http.Handler {
 
 func (m *httpMetrics) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/metric" {
+		if isObservabilityExcludedPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}

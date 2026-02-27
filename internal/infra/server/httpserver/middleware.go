@@ -54,6 +54,11 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 func AccessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isObservabilityExcludedPath(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			rec := &statusRecorder{
 				ResponseWriter: w,
 				status:         http.StatusOK,

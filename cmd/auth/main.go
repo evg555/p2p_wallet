@@ -68,7 +68,7 @@ func main() {
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(log, userRepo, sessionRepo)
 	h := handler.New(userSrv)
-	srv := httpserver.NewServer(cfg.ServerConfig, log, h)
+	srv := httpserver.NewServer(cfg.ServerConfig, log, h, postgresClient)
 
 	go func() {
 		if err = srv.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {

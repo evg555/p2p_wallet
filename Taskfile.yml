@@ -77,7 +77,7 @@ tasks:
   unit-test:
     desc: Run unit tests
     cmds:
-      - go test -cover ./internal/service/... ./internal/domain/...
+      - go test -cover ./internal/service/... ./internal/domain/... ./internal/infra/...
 
   api-test:
     desc: Run contracts test

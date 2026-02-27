@@ -29,8 +29,12 @@ type Logger interface {
 	Warn(msg string, keysAndValues ...any)
 }
 
-func NewServer(cfg config.ServerConfig, log Logger, h api.StrictServerInterface) *server {
-	router := buildRouter(log, h)
+type readinessChecker interface {
+	Ping(ctx context.Context) error
+}
+
+func NewServer(cfg config.ServerConfig, log Logger, h api.StrictServerInterface, checker readinessChecker) *server {
+	router := buildRouter(log, h, checker)
 	addr := buildAddress(cfg)
 
 	srv := &http.Server{
@@ -64,7 +68,7 @@ func (s *server) Close(ctx context.Context) {
 	s.log.Info("http server stopped")
 }
 
-func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
+func buildRouter(log Logger, h api.StrictServerInterface, checker readinessChecker) http.Handler {
 	loader := openapi3.NewLoader()
 	swagger, err := loader.LoadFromFile("spec/openapi/users.yaml")
 	if err != nil {
@@ -75,17 +79,18 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 	}
 
 	metrics := newHTTPMetrics()
-
-	router := chi.NewRouter()
-	router.Use(RequestIDMiddleware)
-	router.Use(metrics.Middleware)
-	router.Use(AccessLogMiddleware(log))
-	router.Use(SessionMiddleware)
-
-	router.Method(http.MethodGet, "/metric", metrics.Handler())
+	rootRouter := chi.NewRouter()
+	registerProbeEndpoints(rootRouter, checker)
 
 	apiRouter := chi.NewRouter()
-	apiRouter.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+	apiRouter.Use(RequestIDMiddleware)
+	apiRouter.Use(metrics.Middleware)
+	apiRouter.Use(AccessLogMiddleware(log))
+	apiRouter.Use(SessionMiddleware)
+	apiRouter.Method(http.MethodGet, metricPath, metrics.Handler())
+
+	openAPIRouter := chi.NewRouter()
+	openAPIRouter.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
 		Options: openapi3filter.Options{
 			AuthenticationFunc: authenticateRequest,
 		},
@@ -103,13 +108,17 @@ func buildRouter(log Logger, h api.StrictServerInterface) http.Handler {
 		},
 	})
 
-	router.Mount("/", api.HandlerFromMux(strictHandler, apiRouter))
+	apiRouter.Mount("/", api.HandlerFromMux(strictHandler, openAPIRouter))
+	rootRouter.Mount("/", apiRouter)
 
 	return otelhttp.NewHandler(
-		router,
+		rootRouter,
 		"http.request",
 		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
 			return r.Method + " " + routePattern(r)
+		}),
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			return !isObservabilityExcludedPath(r.URL.Path)
 		}),
 	)
 }
