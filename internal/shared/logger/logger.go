@@ -26,7 +26,6 @@ type Logger interface {
 	Info(msg string, keysAndValues ...any)
 	Warn(msg string, keysAndValues ...any)
 	Error(msg string, keysAndValues ...any)
-	Sync() error
 	With(keysAndValues ...any) *logger
 }
 
@@ -80,10 +79,6 @@ func (l *logger) Error(msg string, keysAndValues ...any) {
 	event := l.log.Error()
 	appendFields(event, keysAndValues...)
 	event.Msg(msg)
-}
-
-func (l *logger) Sync() error {
-	return nil
 }
 
 func (l *logger) With(keysAndValues ...any) *logger {

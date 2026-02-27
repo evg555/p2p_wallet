@@ -36,7 +36,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer log.Sync() //nolint:errcheck
 
 	log = log.With("version", VERSION).With("env", cfg.Environment)
 
