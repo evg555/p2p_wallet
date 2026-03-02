@@ -33,6 +33,7 @@ linters:
           allow:
             - $gostd
             - p2p_wallet/internal/domain
+            - p2p_wallet/internal/dto
             - p2p_wallet/internal/errs
             - p2p_wallet/internal/service
             - p2p_wallet/internal/shared

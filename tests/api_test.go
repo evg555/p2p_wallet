@@ -13,6 +13,7 @@ import (
 
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/dto"
 	"p2p_wallet/internal/errs"
 	"p2p_wallet/internal/handler"
 
@@ -23,10 +24,10 @@ func TestRegisterUser_Contract_Created(t *testing.T) {
 	t.Parallel()
 
 	createdAt := time.Date(2026, time.February, 25, 10, 0, 0, 0, time.UTC)
-	var gotInput *api.RegisterRequest
+	var gotInput dto.RegisterInput
 
 	svc := &serviceMock{
-		registerFn: func(_ context.Context, input *api.RegisterRequest) (*domain.User, error) {
+		registerFn: func(_ context.Context, input dto.RegisterInput) (*domain.User, error) {
 			gotInput = input
 			return &domain.User{
 				ID:        101,
@@ -70,7 +71,7 @@ func TestRegisterUser_Contract_Conflict(t *testing.T) {
 	t.Parallel()
 
 	svc := &serviceMock{
-		registerFn: func(_ context.Context, _ *api.RegisterRequest) (*domain.User, error) {
+		registerFn: func(_ context.Context, _ dto.RegisterInput) (*domain.User, error) {
 			return nil, errs.ErrUserAlreadyExist
 		},
 	}
@@ -110,7 +111,7 @@ func TestRegisterUser_Contract_InternalServerError(t *testing.T) {
 	t.Parallel()
 
 	svc := &serviceMock{
-		registerFn: func(_ context.Context, _ *api.RegisterRequest) (*domain.User, error) {
+		registerFn: func(_ context.Context, _ dto.RegisterInput) (*domain.User, error) {
 			return nil, errors.New("database unavailable")
 		},
 	}
@@ -137,11 +138,13 @@ func TestRegisterUser_Contract_InternalServerError(t *testing.T) {
 func TestLoginUser_Contract_Ok(t *testing.T) {
 	t.Parallel()
 
-	var gotInput *api.LoginRequest
+	var gotInput dto.LoginInput
+	var gotInputSet bool
 
 	svc := &serviceMock{
-		loginFn: func(_ context.Context, input *api.LoginRequest) (*domain.AuthResult, error) {
+		loginFn: func(_ context.Context, input dto.LoginInput) (*domain.AuthResult, error) {
 			gotInput = input
+			gotInputSet = true
 			return &domain.AuthResult{
 				UserID:       1,
 				UserLogin:    "john",
@@ -163,7 +166,7 @@ func TestLoginUser_Contract_Ok(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.NotNil(t, gotInput)
+	require.True(t, gotInputSet)
 	require.Equal(t, "john", gotInput.Login)
 	require.Equal(t, "secret", gotInput.Password)
 
@@ -179,7 +182,7 @@ func TestLoginUser_Contract_Unauthorized(t *testing.T) {
 	t.Parallel()
 
 	svc := &serviceMock{
-		loginFn: func(_ context.Context, input *api.LoginRequest) (*domain.AuthResult, error) {
+		loginFn: func(_ context.Context, _ dto.LoginInput) (*domain.AuthResult, error) {
 			return nil, errs.ErrPasswordMismatch
 		},
 	}
@@ -202,7 +205,7 @@ func TestLoginUser_Contract_Not_Found(t *testing.T) {
 	t.Parallel()
 
 	svc := &serviceMock{
-		loginFn: func(_ context.Context, input *api.LoginRequest) (*domain.AuthResult, error) {
+		loginFn: func(_ context.Context, _ dto.LoginInput) (*domain.AuthResult, error) {
 			return nil, errs.ErrUserNotFound
 		},
 	}
@@ -240,7 +243,7 @@ func TestLoginUser_Contract_InternalServerError(t *testing.T) {
 	t.Parallel()
 
 	svc := &serviceMock{
-		loginFn: func(_ context.Context, input *api.LoginRequest) (*domain.AuthResult, error) {
+		loginFn: func(_ context.Context, _ dto.LoginInput) (*domain.AuthResult, error) {
 			return nil, errors.New("database unavailable")
 		},
 	}
