@@ -9,12 +9,13 @@ import (
 
 	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/dto"
 	"p2p_wallet/internal/errs"
 )
 
 type Service interface {
-	Register(ctx context.Context, input *api.RegisterRequest) (*domain.User, error)
-	Login(ctx context.Context, input *api.LoginRequest) (*domain.AuthResult, error)
+	Register(ctx context.Context, input dto.RegisterInput) (*domain.User, error)
+	Login(ctx context.Context, input dto.LoginInput) (*domain.AuthResult, error)
 	Logout(ctx context.Context, id int64) error
 }
 
@@ -36,7 +37,7 @@ func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject)
 		}, nil
 	}
 
-	res, err := h.userSrv.Login(ctx, req.Body)
+	res, err := h.userSrv.Login(ctx, reqToLoginDTO(req.Body))
 	if err != nil {
 		var resp api.LoginUserResponseObject
 		switch true {
@@ -87,7 +88,7 @@ func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestO
 		}, nil
 	}
 
-	user, err := h.userSrv.Register(ctx, req.Body)
+	user, err := h.userSrv.Register(ctx, reqToRegisterDTO(req.Body))
 	if err != nil {
 		var resp api.RegisterUserResponseObject
 		switch true {

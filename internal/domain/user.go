@@ -1,25 +1,24 @@
 package domain
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"p2p_wallet/internal/errs"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var maxFieldLength = 50
 
 type User struct {
-	ID        int64      `json:"id"`
-	Login     string     `json:"login"`
-	Password  string     `json:"password"`
-	FirstName string     `json:"first_name"`
-	LastName  string     `json:"last_name"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	ID        int64
+	Login     string
+	Password  string
+	FirstName string
+	LastName  string
+	CreatedAt time.Time
+	UpdatedAt *time.Time
 }
 
 func NewUser(login, password, firstName, lastName string) (*User, error) {
@@ -34,19 +33,26 @@ func NewUser(login, password, firstName, lastName string) (*User, error) {
 		CreatedAt: time.Now(),
 	}
 
-	user.ID = rand.Int63()
-	user.Password = encodePassword(password)
+	hash, err := encodePassword(password)
+	if err != nil {
+		return nil, fmt.Errorf("user: encode password: %w", err)
+	}
+	user.Password = hash
 
 	return user, nil
 }
 
 func (u *User) CheckPassword(password string) bool {
-	return u.Password == encodePassword(password)
+	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil
 }
 
-func encodePassword(password string) string {
-	hash := sha256.Sum256([]byte(password))
-	return hex.EncodeToString(hash[:])
+func encodePassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(hash), nil
 }
 
 func validate(login, password, firstName, lastName string) error {

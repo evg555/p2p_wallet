@@ -4,6 +4,7 @@ run:
 linters:
   default: none
   enable:
+    - depguard
     - errcheck
     - govet
     - ineffassign
@@ -12,6 +13,52 @@ linters:
     - staticcheck
     - unused
   settings:
+    depguard:
+      rules:
+        domain-layer:
+          files:
+            - "${base-path}/internal/domain/*.go"
+            - "!${base-path}/internal/domain/*_test.go"
+          listMode: strict
+          allow:
+            - $gostd
+            - p2p_wallet/internal/domain
+            - p2p_wallet/internal/errs
+            - github.com/google/uuid
+            - golang.org/x/crypto/bcrypt
+        application-service-layer:
+          files:
+            - "${base-path}/internal/service/*.go"
+            - "!${base-path}/internal/service/*_test.go"
+          listMode: strict
+          allow:
+            - $gostd
+            - p2p_wallet/internal/domain
+            - p2p_wallet/internal/dto
+            - p2p_wallet/internal/errs
+            - p2p_wallet/internal/service
+            - p2p_wallet/internal/shared
+        repository-layer:
+          files:
+            - "${base-path}/internal/repository/*.go"
+            - "!${base-path}/internal/repository/*_test.go"
+          deny:
+            - pkg: p2p_wallet/internal/service
+              desc: repository layer must not depend on application service layer
+        handler-layer:
+          files:
+            - "${base-path}/internal/handler/*.go"
+            - "!${base-path}/internal/handler/*_test.go"
+          deny:
+            - pkg: p2p_wallet/internal/repository
+              desc: handler layer must not depend on repository layer
+        transport-layer:
+          files:
+            - "${base-path}/internal/infra/server/httpserver/*.go"
+            - "!${base-path}/internal/infra/server/httpserver/*_test.go"
+          deny:
+            - pkg: p2p_wallet/internal/repository
+              desc: transport layer must not depend on repository layer
     revive:
       rules:
         - name: var-naming

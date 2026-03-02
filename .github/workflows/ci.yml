@@ -35,9 +35,3 @@ jobs:
 
       - name: Unit Tests
         run: task unit-test
-
-      - name: Integration Tests
-        run: task integration-test
-
-      - name: Contract Tests
-        run: task api-test

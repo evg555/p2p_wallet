@@ -8,7 +8,6 @@ import (
 
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/errs"
-	"p2p_wallet/internal/service"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -43,10 +42,10 @@ var (
 )
 
 type metricsUserRepo struct {
-	next service.UserRepo
+	next UserRepo
 }
 
-func NewUserRepoWithMetrics(next service.UserRepo) service.UserRepo {
+func NewUserRepoWithMetrics(next UserRepo) UserRepo {
 	registerDBMetricsOnce.Do(func() {
 		prometheus.MustRegister(dbQueryTotal, dbQueryDuration, dbQueryErrors)
 	})

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/dto"
 	"p2p_wallet/internal/errs"
 	"p2p_wallet/internal/shared/requestctx"
 )
@@ -45,7 +45,7 @@ func New(log Logger, repo UserRepo, sessionRepo SessionRepo) *service {
 	}
 }
 
-func (s *service) Register(ctx context.Context, input *api.RegisterRequest) (*domain.User, error) {
+func (s *service) Register(ctx context.Context, input dto.RegisterInput) (*domain.User, error) {
 	user, err := domain.NewUser(input.Login, input.Password, input.Name, input.LastName)
 	if err != nil {
 		s.log.Warn("user register failed", withReqID(ctx, "login", input.Login, "error", err.Error())...)
@@ -64,7 +64,7 @@ func (s *service) Register(ctx context.Context, input *api.RegisterRequest) (*do
 	return savedUser, nil
 }
 
-func (s *service) Login(ctx context.Context, input *api.LoginRequest) (*domain.AuthResult, error) {
+func (s *service) Login(ctx context.Context, input dto.LoginInput) (*domain.AuthResult, error) {
 	user, err := s.userRepo.GetByLogin(ctx, input.Login)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
