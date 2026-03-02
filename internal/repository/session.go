@@ -6,10 +6,7 @@ import (
 
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/infra"
-	"p2p_wallet/internal/service"
 )
-
-var _ service.SessionRepo = (*sessionRepo)(nil)
 
 var errWrongType = errors.New("cache value is not string")
 

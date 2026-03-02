@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"p2p_wallet/internal/domain"
-	"p2p_wallet/internal/service"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -14,11 +13,11 @@ import (
 )
 
 type tracingUserRepo struct {
-	next   service.UserRepo
+	next   UserRepo
 	tracer trace.Tracer
 }
 
-func NewUserRepoWithTracing(next service.UserRepo) service.UserRepo {
+func NewUserRepoWithTracing(next UserRepo) UserRepo {
 	return &tracingUserRepo{
 		next:   next,
 		tracer: otel.Tracer("p2p-wallet/repository/user"),

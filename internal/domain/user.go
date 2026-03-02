@@ -13,13 +13,13 @@ import (
 var maxFieldLength = 50
 
 type User struct {
-	ID        int64      `json:"id"`
-	Login     string     `json:"login"`
-	Password  string     `json:"password"`
-	FirstName string     `json:"first_name"`
-	LastName  string     `json:"last_name"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	ID        int64
+	Login     string
+	Password  string
+	FirstName string
+	LastName  string
+	CreatedAt time.Time
+	UpdatedAt *time.Time
 }
 
 func NewUser(login, password, firstName, lastName string) (*User, error) {

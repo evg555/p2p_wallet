@@ -7,15 +7,12 @@ import (
 
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/errs"
-	"p2p_wallet/internal/service"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-var _ service.UserRepo = (*userPostgresRepo)(nil)
 
 type userPostgresRepo struct {
 	client *pgxpool.Pool
