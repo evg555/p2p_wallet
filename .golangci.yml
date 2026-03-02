@@ -25,6 +25,7 @@ linters:
             - p2p_wallet/internal/domain
             - p2p_wallet/internal/errs
             - github.com/google/uuid
+            - golang.org/x/crypto/bcrypt
         application-service-layer:
           files:
             - "${base-path}/internal/service/*.go"

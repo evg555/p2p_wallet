@@ -34,7 +34,7 @@ func TestRegister(t *testing.T) {
 
 	userRepo.EXPECT().Save(ctx, mock.MatchedBy(func(u *domain.User) bool {
 		return u != nil &&
-			u.ID != 0 &&
+			u.ID == 0 &&
 			u.Login == input.Login &&
 			u.CheckPassword(input.Password) &&
 			u.FirstName == input.Name &&
