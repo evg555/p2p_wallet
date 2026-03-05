@@ -60,7 +60,7 @@ func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject)
 
 	resp := api.LoginUser200JSONResponse{
 		Body: api.LoginResponse{
-			Id:       res.UserID,
+			Id:       int64(res.UserID),
 			LastName: res.UserLastName,
 			Login:    res.UserLogin,
 			Name:     res.UserName,
@@ -106,7 +106,7 @@ func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestO
 
 	resp := api.RegisterUser201JSONResponse{
 		CreatedAt: user.CreatedAt,
-		Id:        user.ID,
+		Id:        int64(user.ID),
 		LastName:  user.LastName,
 		Login:     user.Login,
 		Name:      user.FirstName,

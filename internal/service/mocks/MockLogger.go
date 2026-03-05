@@ -9,16 +9,100 @@ type MockLogger struct {
 	mock.Mock
 }
 
-func (_m *MockLogger) Info(_ string, _ ...any) {}
-
-func (_m *MockLogger) Warn(_ string, _ ...any) {}
-
 type MockLogger_Expecter struct {
 	mock *mock.Mock
 }
 
 func (_m *MockLogger) EXPECT() *MockLogger_Expecter {
 	return &MockLogger_Expecter{mock: &_m.Mock}
+}
+
+// Info provides a mock function with given fields: msg, keysAndValues
+func (_m *MockLogger) Info(msg string, keysAndValues ...any) {
+	var _ca []interface{}
+	_ca = append(_ca, msg)
+	_ca = append(_ca, keysAndValues...)
+	_m.Called(_ca...)
+}
+
+// MockLogger_Info_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Info'
+type MockLogger_Info_Call struct {
+	*mock.Call
+}
+
+// Info is a helper method to define mock.On call
+//   - msg string
+//   - keysAndValues ...any
+func (_e *MockLogger_Expecter) Info(msg interface{}, keysAndValues ...interface{}) *MockLogger_Info_Call {
+	return &MockLogger_Info_Call{Call: _e.mock.On("Info",
+		append([]interface{}{msg}, keysAndValues...)...)}
+}
+
+func (_c *MockLogger_Info_Call) Run(run func(msg string, keysAndValues ...any)) *MockLogger_Info_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]any, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(any)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockLogger_Info_Call) Return() *MockLogger_Info_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockLogger_Info_Call) RunAndReturn(run func(string, ...any)) *MockLogger_Info_Call {
+	_c.Run(run)
+	return _c
+}
+
+// Warn provides a mock function with given fields: msg, keysAndValues
+func (_m *MockLogger) Warn(msg string, keysAndValues ...any) {
+	var _ca []interface{}
+	_ca = append(_ca, msg)
+	_ca = append(_ca, keysAndValues...)
+	_m.Called(_ca...)
+}
+
+// MockLogger_Warn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Warn'
+type MockLogger_Warn_Call struct {
+	*mock.Call
+}
+
+// Warn is a helper method to define mock.On call
+//   - msg string
+//   - keysAndValues ...any
+func (_e *MockLogger_Expecter) Warn(msg interface{}, keysAndValues ...interface{}) *MockLogger_Warn_Call {
+	return &MockLogger_Warn_Call{Call: _e.mock.On("Warn",
+		append([]interface{}{msg}, keysAndValues...)...)}
+}
+
+func (_c *MockLogger_Warn_Call) Run(run func(msg string, keysAndValues ...any)) *MockLogger_Warn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]any, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(any)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockLogger_Warn_Call) Return() *MockLogger_Warn_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockLogger_Warn_Call) RunAndReturn(run func(string, ...any)) *MockLogger_Warn_Call {
+	_c.Run(run)
+	return _c
 }
 
 // NewMockLogger creates a new instance of MockLogger. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

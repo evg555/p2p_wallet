@@ -7,7 +7,7 @@ import (
 
 type cache struct {
 	mu   sync.RWMutex
-	data map[int64]entry
+	data map[string]entry
 }
 
 type entry struct {
@@ -17,45 +17,28 @@ type entry struct {
 
 func NewCache() *cache {
 	return &cache{
-		data: make(map[int64]entry),
+		data: make(map[string]entry),
 	}
 }
 
-func (c *cache) Get(id int64) (any, error) {
+func (c *cache) Get(key string) (any, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	v, ok := c.data[id]
+	v, ok := c.data[key]
 	if !ok {
 		return nil, nil
 	}
 
 	if v.isExpired() {
-		delete(c.data, id)
+		delete(c.data, key)
 		return nil, nil
 	}
 
 	return v.value, nil
 }
 
-func (c *cache) GetAll() ([]any, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	data := make([]any, 0, len(c.data))
-	for id, v := range c.data {
-		if v.isExpired() {
-			delete(c.data, id)
-			continue
-		}
-
-		data = append(data, v.value)
-	}
-
-	return data, nil
-}
-
-func (c *cache) Set(id int64, v any, ttl time.Duration) {
+func (c *cache) Set(key string, v any, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -64,14 +47,14 @@ func (c *cache) Set(id int64, v any, ttl time.Duration) {
 		e.expiresAt = time.Now().Add(ttl)
 	}
 
-	c.data[id] = e
+	c.data[key] = e
 }
 
-func (c *cache) Delete(id int64) {
+func (c *cache) Delete(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	delete(c.data, id)
+	delete(c.data, key)
 }
 
 func (e entry) isExpired() bool {

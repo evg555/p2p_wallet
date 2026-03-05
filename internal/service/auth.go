@@ -21,9 +21,9 @@ type UserRepo interface {
 }
 
 type SessionRepo interface {
-	Get(id int64) (domain.SessionID, error)
-	Set(id int64, v domain.SessionID, ttl time.Duration)
-	Delete(id int64)
+	Get(key domain.SessionID) (*domain.Session, error)
+	Set(key domain.SessionID, v *domain.Session, ttl time.Duration)
+	Delete(key domain.SessionID)
 }
 
 type Logger interface {
@@ -79,8 +79,8 @@ func (s *service) Login(ctx context.Context, input dto.LoginInput) (*domain.Auth
 		return nil, errs.ErrPasswordMismatch
 	}
 
-	newSessionID := domain.NewSessionID()
-	s.sessionRepo.Set(user.ID, newSessionID, sessionTTL)
+	newSession := domain.NewSession(user.ID, sessionTTL)
+	s.sessionRepo.Set(newSession.SessionID(), newSession, sessionTTL)
 	s.log.Info("user login succeeded", withReqID(ctx, "user_id", user.ID, "login", user.Login)...)
 
 	return &domain.AuthResult{
@@ -88,23 +88,11 @@ func (s *service) Login(ctx context.Context, input dto.LoginInput) (*domain.Auth
 		UserLogin:    user.Login,
 		UserName:     user.FirstName,
 		UserLastName: user.LastName,
-		SessionID:    newSessionID,
+		SessionID:    newSession.SessionID(),
 	}, nil
 }
 
 func (s *service) Logout(ctx context.Context, id int64) error {
-	existSessionID, err := s.sessionRepo.Get(id)
-	if err != nil || existSessionID.IsEmpty() {
-		s.log.Warn("user logout failed", withReqID(ctx, "user_id", id, "error", "session not found")...)
-		return errs.ErrSessionNotFound
-	}
-
-	sessionID, ok := ctx.Value(domain.CtxKey(domain.SessionKey)).(string)
-	if !ok || !existSessionID.Equal(sessionID) {
-		s.log.Warn("user logout failed: access denied", withReqID(ctx, "user_id", id)...)
-		return errs.ErrAccessDenied
-	}
-
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
@@ -114,7 +102,19 @@ func (s *service) Logout(ctx context.Context, id int64) error {
 		return fmt.Errorf("userRepo: failed to get user by id: %w", err)
 	}
 
-	s.sessionRepo.Delete(user.ID)
+	sessionID, ok := ctx.Value(domain.CtxKey(domain.SessionKey)).(string)
+	if !ok {
+		s.log.Warn("user logout failed: access denied", withReqID(ctx, "user_id", id)...)
+		return errs.ErrAccessDenied
+	}
+
+	existSession, err := s.sessionRepo.Get(domain.SessionID(sessionID))
+	if err != nil || !existSession.Equal(sessionID) {
+		s.log.Warn("user logout failed", withReqID(ctx, "user_id", id, "error", "session not found")...)
+		return errs.ErrSessionNotFound
+	}
+
+	s.sessionRepo.Delete(existSession.SessionID())
 	s.log.Info("user logout succeeded", withReqID(ctx, "user_id", user.ID, "login", user.Login)...)
 	return nil
 }
