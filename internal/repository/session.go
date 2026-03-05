@@ -5,14 +5,19 @@ import (
 	"time"
 
 	"p2p_wallet/internal/domain"
-	"p2p_wallet/internal/infra"
+	"p2p_wallet/internal/infra/cache"
 )
 
-var errWrongType = errors.New("cache value is not string")
+var cacheSize = 256
+
+var (
+	errWrongType = errors.New("cache value is not string")
+	errNotFound  = errors.New("cache value not found")
+)
 
 type Cache interface {
-	Get(key string) (any, error)
-	Set(key string, v any, ttl time.Duration)
+	Get(key string) (any, bool)
+	SetWithTTL(key string, v any, ttl time.Duration)
 	Delete(key string)
 }
 
@@ -22,14 +27,14 @@ type sessionRepo struct {
 
 func NewSessionRepo() *sessionRepo {
 	return &sessionRepo{
-		cache: infra.NewCache(),
+		cache: cache.NewCache(cacheSize),
 	}
 }
 
 func (s *sessionRepo) Get(key domain.SessionID) (*domain.Session, error) {
-	val, err := s.cache.Get(string(key))
-	if err != nil {
-		return nil, err
+	val, ok := s.cache.Get(string(key))
+	if !ok {
+		return nil, errNotFound
 	}
 
 	valStr, ok := val.(*domain.Session)
@@ -41,7 +46,7 @@ func (s *sessionRepo) Get(key domain.SessionID) (*domain.Session, error) {
 }
 
 func (s *sessionRepo) Set(key domain.SessionID, v *domain.Session, ttl time.Duration) {
-	s.cache.Set(string(key), v, ttl)
+	s.cache.SetWithTTL(string(key), v, ttl)
 }
 
 func (s *sessionRepo) Delete(key domain.SessionID) {
