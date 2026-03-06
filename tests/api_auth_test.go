@@ -26,7 +26,7 @@ func TestRegisterUser_Contract_Created(t *testing.T) {
 	createdAt := time.Date(2026, time.February, 25, 10, 0, 0, 0, time.UTC)
 	var gotInput dto.RegisterInput
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		registerFn: func(_ context.Context, input dto.RegisterInput) (*domain.User, error) {
 			gotInput = input
 			return &domain.User{
@@ -70,7 +70,7 @@ func TestRegisterUser_Contract_Created(t *testing.T) {
 func TestRegisterUser_Contract_Conflict(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		registerFn: func(_ context.Context, _ dto.RegisterInput) (*domain.User, error) {
 			return nil, errs.ErrUserAlreadyExist
 		},
@@ -95,7 +95,7 @@ func TestRegisterUser_Contract_Conflict(t *testing.T) {
 func TestRegisterUser_Contract_Bad_Request(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{}
+	svc := &authServiceMock{}
 	server := newTestServer(svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/users/register", nil)
@@ -110,7 +110,7 @@ func TestRegisterUser_Contract_Bad_Request(t *testing.T) {
 func TestRegisterUser_Contract_InternalServerError(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		registerFn: func(_ context.Context, _ dto.RegisterInput) (*domain.User, error) {
 			return nil, errors.New("database unavailable")
 		},
@@ -141,7 +141,7 @@ func TestLoginUser_Contract_Ok(t *testing.T) {
 	var gotInput dto.LoginInput
 	var gotInputSet bool
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		loginFn: func(_ context.Context, input dto.LoginInput) (*domain.AuthResult, error) {
 			gotInput = input
 			gotInputSet = true
@@ -181,7 +181,7 @@ func TestLoginUser_Contract_Ok(t *testing.T) {
 func TestLoginUser_Contract_Unauthorized(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		loginFn: func(_ context.Context, _ dto.LoginInput) (*domain.AuthResult, error) {
 			return nil, errs.ErrPasswordMismatch
 		},
@@ -204,7 +204,7 @@ func TestLoginUser_Contract_Unauthorized(t *testing.T) {
 func TestLoginUser_Contract_Not_Found(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		loginFn: func(_ context.Context, _ dto.LoginInput) (*domain.AuthResult, error) {
 			return nil, errs.ErrUserNotFound
 		},
@@ -227,7 +227,7 @@ func TestLoginUser_Contract_Not_Found(t *testing.T) {
 func TestLoginUser_Contract_Bad_Request(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{}
+	svc := &authServiceMock{}
 	server := newTestServer(svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/users/login", nil)
@@ -242,7 +242,7 @@ func TestLoginUser_Contract_Bad_Request(t *testing.T) {
 func TestLoginUser_Contract_InternalServerError(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		loginFn: func(_ context.Context, _ dto.LoginInput) (*domain.AuthResult, error) {
 			return nil, errors.New("database unavailable")
 		},
@@ -270,7 +270,7 @@ func TestLogoutUser_Contract_No_Content(t *testing.T) {
 
 	var gotID *int64
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		logoutFn: func(_ context.Context, id int64) error {
 			gotID = &id
 			return nil
@@ -291,7 +291,7 @@ func TestLogoutUser_Contract_No_Content(t *testing.T) {
 func TestLogoutUser_Contract_Unauthorized(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		logoutFn: func(_ context.Context, id int64) error {
 			return errs.ErrSessionNotFound
 		},
@@ -311,7 +311,7 @@ func TestLogoutUser_Contract_Unauthorized(t *testing.T) {
 func TestLogoutUser_Contract_Not_Found(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		logoutFn: func(_ context.Context, id int64) error {
 			return errs.ErrUserNotFound
 		},
@@ -331,7 +331,7 @@ func TestLogoutUser_Contract_Not_Found(t *testing.T) {
 func TestLogoutUser_Contract_Forbidden(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		logoutFn: func(_ context.Context, id int64) error {
 			return errs.ErrAccessDenied
 		},
@@ -351,7 +351,7 @@ func TestLogoutUser_Contract_Forbidden(t *testing.T) {
 func TestLogoutUser_Contract_InternalServerError(t *testing.T) {
 	t.Parallel()
 
-	svc := &serviceMock{
+	svc := &authServiceMock{
 		logoutFn: func(_ context.Context, id int64) error {
 			return errors.New("database unavailable")
 		},
@@ -371,8 +371,8 @@ func TestLogoutUser_Contract_InternalServerError(t *testing.T) {
 	require.Equal(t, "internal server error\n", string(resp))
 }
 
-func newTestServer(svc handler.Service) http.Handler {
-	h := handler.New(svc)
+func newTestServer(svc handler.AuthService) http.Handler {
+	h := handler.New(svc, nil)
 	return api.Handler(api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)

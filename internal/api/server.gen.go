@@ -524,11 +524,29 @@ func (response ListUserWallets200JSONResponse) VisitListUserWalletsResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListUserWallets400JSONResponse ErrorResponse
+
+func (response ListUserWallets400JSONResponse) VisitListUserWalletsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListUserWallets401JSONResponse ErrorResponse
 
 func (response ListUserWallets401JSONResponse) VisitListUserWalletsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListUserWallets403JSONResponse ErrorResponse
+
+func (response ListUserWallets403JSONResponse) VisitListUserWalletsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }

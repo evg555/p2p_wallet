@@ -66,7 +66,7 @@ func main() {
 	userRepo = repository.NewUserRepoWithMetrics(userRepo)
 	sessionRepo := repository.NewSessionRepo()
 	userSrv := service.New(log, userRepo, sessionRepo)
-	h := handler.New(userSrv)
+	h := handler.New(userSrv, nil)
 	srv := httpserver.NewServer(cfg.ServerConfig, log, h, postgresClient)
 
 	go func() {
