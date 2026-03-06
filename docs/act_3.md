@@ -77,7 +77,7 @@
 | `currency`         | `enum(USD, EUR)` | `not null`               | валюта                        |
 | `held_amount`      | `bigint`         | `not null default 0`     | удержанный баланс             |
 | `total_amount`     | `bigint`         | `not null default 0`     | общий баланс                  |
-| `updated_at`       | `timestamptz`    | `not null default now()` | дата и время обновления       |
+| `updated_at`       | `timestamp`      | `not null default now()` | дата и время обновления       |
 
 - constraint fk_wallet_balance_snapshots_wallet_id foreign key (wallet_id) references wallets(id) on delete cascade
 - constraint chk_balance_nonnegative check (held_amount >= 0 and total_amount >= 0 and held_amount <= total_amount)

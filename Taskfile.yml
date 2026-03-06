@@ -130,7 +130,7 @@ tasks:
         set -a
         . ./.env
         set +a
-        ./bin/goose -dir ./migration/auth postgres "host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASS} dbname=${DB_DATABASE} sslmode=${DB_SSLMODE}" up
+        ./bin/goose -dir ./migration postgres "host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASS} dbname=${DB_DATABASE} sslmode=${DB_SSLMODE}" up
 
   migrate-down:
     desc: Rollback goose migration
