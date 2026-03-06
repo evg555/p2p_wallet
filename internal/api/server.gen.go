@@ -25,6 +25,12 @@ type ServerInterface interface {
 	// Выход из системы
 	// (POST /users/{id}/logout)
 	LogoutUser(w http.ResponseWriter, r *http.Request, id UserId)
+	// Создание нового кошелька
+	// (POST /wallet)
+	CreateWallet(w http.ResponseWriter, r *http.Request)
+	// Получение кошельков пользователя
+	// (GET /wallets/{user_id})
+	ListUserWallets(w http.ResponseWriter, r *http.Request, userId WalletUserId)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -46,6 +52,18 @@ func (_ Unimplemented) RegisterUser(w http.ResponseWriter, r *http.Request) {
 // Выход из системы
 // (POST /users/{id}/logout)
 func (_ Unimplemented) LogoutUser(w http.ResponseWriter, r *http.Request, id UserId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Создание нового кошелька
+// (POST /wallet)
+func (_ Unimplemented) CreateWallet(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Получение кошельков пользователя
+// (GET /wallets/{user_id})
+func (_ Unimplemented) ListUserWallets(w http.ResponseWriter, r *http.Request, userId WalletUserId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -108,6 +126,57 @@ func (siw *ServerInterfaceWrapper) LogoutUser(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LogoutUser(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateWallet operation middleware
+func (siw *ServerInterfaceWrapper) CreateWallet(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateWallet(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListUserWallets operation middleware
+func (siw *ServerInterfaceWrapper) ListUserWallets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "user_id" -------------
+	var userId WalletUserId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUserWallets(w, r, userId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -238,6 +307,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/users/{id}/logout", wrapper.LogoutUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/wallet", wrapper.CreateWallet)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/wallets/{user_id}", wrapper.ListUserWallets)
 	})
 
 	return r
@@ -388,6 +463,76 @@ func (response LogoutUser404JSONResponse) VisitLogoutUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type CreateWalletRequestObject struct {
+	Body *CreateWalletJSONRequestBody
+}
+
+type CreateWalletResponseObject interface {
+	VisitCreateWalletResponse(w http.ResponseWriter) error
+}
+
+type CreateWallet201JSONResponse WalletResponse
+
+func (response CreateWallet201JSONResponse) VisitCreateWalletResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWallet400JSONResponse ErrorResponse
+
+func (response CreateWallet400JSONResponse) VisitCreateWalletResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWallet401JSONResponse ErrorResponse
+
+func (response CreateWallet401JSONResponse) VisitCreateWalletResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWallet409JSONResponse ErrorResponse
+
+func (response CreateWallet409JSONResponse) VisitCreateWalletResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListUserWalletsRequestObject struct {
+	UserId WalletUserId `json:"user_id"`
+}
+
+type ListUserWalletsResponseObject interface {
+	VisitListUserWalletsResponse(w http.ResponseWriter) error
+}
+
+type ListUserWallets200JSONResponse ListWalletsResponse
+
+func (response ListUserWallets200JSONResponse) VisitListUserWalletsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListUserWallets401JSONResponse ErrorResponse
+
+func (response ListUserWallets401JSONResponse) VisitListUserWalletsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Вход в систему
@@ -399,6 +544,12 @@ type StrictServerInterface interface {
 	// Выход из системы
 	// (POST /users/{id}/logout)
 	LogoutUser(ctx context.Context, request LogoutUserRequestObject) (LogoutUserResponseObject, error)
+	// Создание нового кошелька
+	// (POST /wallet)
+	CreateWallet(ctx context.Context, request CreateWalletRequestObject) (CreateWalletResponseObject, error)
+	// Получение кошельков пользователя
+	// (GET /wallets/{user_id})
+	ListUserWallets(ctx context.Context, request ListUserWalletsRequestObject) (ListUserWalletsResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -511,6 +662,63 @@ func (sh *strictHandler) LogoutUser(w http.ResponseWriter, r *http.Request, id U
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LogoutUserResponseObject); ok {
 		if err := validResponse.VisitLogoutUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateWallet operation middleware
+func (sh *strictHandler) CreateWallet(w http.ResponseWriter, r *http.Request) {
+	var request CreateWalletRequestObject
+
+	var body CreateWalletJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateWallet(ctx, request.(CreateWalletRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateWallet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateWalletResponseObject); ok {
+		if err := validResponse.VisitCreateWalletResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListUserWallets operation middleware
+func (sh *strictHandler) ListUserWallets(w http.ResponseWriter, r *http.Request, userId WalletUserId) {
+	var request ListUserWalletsRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListUserWallets(ctx, request.(ListUserWalletsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListUserWallets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListUserWalletsResponseObject); ok {
+		if err := validResponse.VisitListUserWalletsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

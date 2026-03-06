@@ -11,7 +11,6 @@
 ```json
 {
   "user_id": 1,
-  "title": "string",
   "currency": "string"
 }
 ```
@@ -23,8 +22,8 @@
 {
   "id": 1,
   "user_id": 1,
-  "title": "string",
   "currency": "string",
+  "status": "string",
   "created_at": "2026-02-19T13:00:00Z"
 }
 ```
@@ -45,9 +44,10 @@
   "wallets": [
     {
       "id": 1,
-      "user_id": 1,
-      "title": "string",
-      "currency": "string",
+      "currency": "string",      
+      "total_amount": 10010, // в минорах
+      "held_amount": 10010, // в минорах
+      "status": "string",      
       "created_at": "2026-02-19T13:00:00Z",
       "updated_at": "2026-02-19T13:00:00Z"
     },
@@ -59,21 +59,35 @@
 ## Хранение в БД
 
 ### Таблица `wallets`
-| поле         | тип              | ограничение     | название          |
-|--------------|------------------|-----------------|-------------------|
-| `id`         | `bigint`         | `primary key`   | ID кошелька       |
-| `title`      | `varchar(50)`    | `not null`      | название кошелька |
-| `currency`   | `enum(USD, EUR)` | `not null`      | валюта кошелька   |
-| `user_id`    | `bigint`         | `foreign key`   | кому принадлежит  |
-| `balance_id` | `bigint`         | `foreign key`   | связанный баланс  |
-| `created_at` | `timestamp`      | `default now()` | дата создания     |
-| `updated_at` | `timestamp`      | `null`          | дата обновления   |
+| поле         | тип                     | ограничение      | название          |
+|--------------|-------------------------|------------------|-------------------|
+| `id`         | `bigint`                | `primary key`    | ID кошелька       |
+| `currency`   | `enum(USD, EUR)`        | `not null`       | валюта кошелька   |
+| `status`     | `enum(active, blocked)` | `default active` | статус кошелька   |
+| `user_id`    | `bigint`                | `foreign key`    | кому принадлежит  |
+| `created_at` | `timestamp`             | `default now()`  | дата создания     |
+| `updated_at` | `timestamp`             | `null`           | дата обновления   |
+
+- constraint uq_wallet_user_currency unique (user_id, currency)
+
+### Таблица `wallet_balance_snapshots`
+| поле               | тип              | ограничение              | название                      |
+|--------------------|------------------|--------------------------|-------------------------------|
+| `wallet_id`        | `bigint`         | `primary key`            | ID кошелька                   |
+| `currency`         | `enum(USD, EUR)` | `not null`               | валюта                        |
+| `held_amount`      | `bigint`         | `not null default 0`     | удержанный баланс             |
+| `total_amount`     | `bigint`         | `not null default 0`     | общий баланс                  |
+| `updated_at`       | `timestamptz`    | `not null default now()` | дата и время обновления       |
+
+- constraint fk_wallet_balance_snapshots_wallet_id foreign key (wallet_id) references wallets(id) on delete cascade
+- constraint chk_balance_nonnegative check (held_amount >= 0 and total_amount >= 0 and held_amount <= total_amount)
 
 ## Что важно не упустить в сценариях
 
 ### Создание кошелька
-- операции создания кошелька должны быть идемпотентны (хэш по user_id и currency)
-- `400 Bad Request` при невалидном `currency`/`title`/`name`/`last_name`.
+- Операции создания кошелька должны быть идемпотентны (уникальный индекс по user_id и currency)
+- Snapshot баланса создается автоматически при создании нового кошелька с дефолтными значениями
+- `400 Bad Request` при невалидном `currency`.
 - `409 Conflict`, если `wallet` уже занят.
 - `401 Unauthorized`, если сессии нет или просрочена.
 
@@ -82,6 +96,7 @@
 - Кэшировать на час данные по кошелька мпо пользователю
 
 ### Общее
+- Деньги храним в минорах (в центах с точностью 2 знака после запятой)
 - Единый формат ошибок (`code`, `message`).
-- Ограничения на длину и допустимые символы для `title`, `currency`.
+- Ограничения на длину и допустимые символы для `currency`.
 - Таймзона для `created_at`/`updated_at` (рекомендуется UTC).
