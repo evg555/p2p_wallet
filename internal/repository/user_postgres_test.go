@@ -184,7 +184,16 @@ func migrationDirsWithSQL(root string) ([]string, error) {
 		return nil, err
 	}
 
-	dirs := make([]string, 0, len(entries))
+	dirs := make([]string, 0, len(entries)+1)
+
+	rootMatches, err := filepath.Glob(filepath.Join(root, "*.sql"))
+	if err != nil {
+		return nil, err
+	}
+	if len(rootMatches) > 0 {
+		dirs = append(dirs, root)
+	}
+
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue

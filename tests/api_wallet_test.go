@@ -70,7 +70,7 @@ func TestCreateWallet_Contract_Conflict(t *testing.T) {
 
 	svc := &walletServiceMock{
 		createWalletFn: func(_ context.Context, _ dto.CreateWalletInput) (*domain.Wallet, error) {
-			return nil, errs.ErrUserAlreadyExist
+			return nil, errs.ErrWalletAlreadyExist
 		},
 	}
 	server := newTestWalletServer(svc)
@@ -85,7 +85,7 @@ func TestCreateWallet_Contract_Conflict(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusConflict, rec.Code)
-	require.Contains(t, rec.Body.String(), "user already exist")
+	require.Contains(t, rec.Body.String(), "wallet already exist")
 
 }
 

@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-const precision = 2
+// const precision = 2
 
 type WalletID int64
 
