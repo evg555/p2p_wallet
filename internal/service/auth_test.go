@@ -26,7 +26,7 @@ func TestRegister(t *testing.T) {
 	userRepo := mocks.NewMockUserRepo(t)
 	sessionRepo := mocks.NewMockSessionRepo(t)
 	logger := &testLogger{}
-	svc := New(logger, userRepo, sessionRepo)
+	svc := NewAuthService(logger, userRepo, sessionRepo)
 
 	input := dto.RegisterInput{
 		LoginInput: dto.LoginInput{
@@ -61,7 +61,7 @@ func TestLogin(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db down")
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, repoErr)
@@ -78,7 +78,7 @@ func TestLogin(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, errs.ErrUserNotFound)
 
@@ -92,7 +92,7 @@ func TestLogin(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(&domain.User{
 			ID:       1,
@@ -110,7 +110,7 @@ func TestLogin(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		user, err := domain.NewUser("john", "secret", "John", "Doe")
 		assert.NoError(t, err)
@@ -144,7 +144,7 @@ func TestLogout(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(nil, errors.New("cache fail"))
@@ -158,7 +158,7 @@ func TestLogout(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
 
@@ -171,7 +171,7 @@ func TestLogout(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db fail")
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, repoErr)
@@ -187,7 +187,7 @@ func TestLogout(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
 
@@ -200,7 +200,7 @@ func TestLogout(t *testing.T) {
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := New(logger, userRepo, sessionRepo)
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
 			ID:     domain.SessionID("sid"),

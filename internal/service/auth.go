@@ -31,21 +31,21 @@ type Logger interface {
 	Warn(msg string, keysAndValues ...any)
 }
 
-type service struct {
+type authService struct {
 	log         Logger
 	userRepo    UserRepo
 	sessionRepo SessionRepo
 }
 
-func New(log Logger, repo UserRepo, sessionRepo SessionRepo) *service {
-	return &service{
+func NewAuthService(log Logger, repo UserRepo, sessionRepo SessionRepo) *authService {
+	return &authService{
 		log:         log,
 		userRepo:    repo,
 		sessionRepo: sessionRepo,
 	}
 }
 
-func (s *service) Register(ctx context.Context, input dto.RegisterInput) (*domain.User, error) {
+func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*domain.User, error) {
 	user, err := domain.NewUser(input.Login, input.Password, input.Name, input.LastName)
 	if err != nil {
 		s.log.Warn("user register failed", withReqID(ctx, "login", input.Login, "error", err.Error())...)
@@ -64,7 +64,7 @@ func (s *service) Register(ctx context.Context, input dto.RegisterInput) (*domai
 	return savedUser, nil
 }
 
-func (s *service) Login(ctx context.Context, input dto.LoginInput) (*domain.AuthResult, error) {
+func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*domain.AuthResult, error) {
 	user, err := s.userRepo.GetByLogin(ctx, input.Login)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
@@ -92,7 +92,7 @@ func (s *service) Login(ctx context.Context, input dto.LoginInput) (*domain.Auth
 	}, nil
 }
 
-func (s *service) Logout(ctx context.Context, id int64) error {
+func (s *authService) Logout(ctx context.Context, id int64) error {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {

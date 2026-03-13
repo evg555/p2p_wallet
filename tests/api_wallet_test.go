@@ -34,15 +34,15 @@ func TestCreateWallet_Contract_Created(t *testing.T) {
 			return &domain.Wallet{
 				ID:        1,
 				UserID:    10,
-				Currency:  "USD",
-				Status:    "active",
+				Currency:  domain.CurrencyUSD,
+				Status:    domain.StatusActive,
 				CreatedAt: createdAt,
 			}, nil
 		},
 	}
 	server := newTestWalletServer(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/wallet", strings.NewReader(`{
+	req := httptest.NewRequest(http.MethodPost, "/wallets", strings.NewReader(`{
 		"user_id":10,
 		"currency":"USD"
 	}`))
@@ -75,7 +75,7 @@ func TestCreateWallet_Contract_Conflict(t *testing.T) {
 	}
 	server := newTestWalletServer(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/wallet", strings.NewReader(`{
+	req := httptest.NewRequest(http.MethodPost, "/wallets", strings.NewReader(`{
 		"user_id":10,
 		"currency":"USD"
 	}`))
@@ -95,7 +95,7 @@ func TestCreateWallet_Contract_Bad_Request(t *testing.T) {
 	svc := &walletServiceMock{}
 	server := newTestWalletServer(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/wallet", nil)
+	req := httptest.NewRequest(http.MethodPost, "/wallets", nil)
 	req.Header.Set("Content-Type", "application/json")
 
 	rec := httptest.NewRecorder()
@@ -114,7 +114,7 @@ func TestCreateWallet_Contract_Unauthorized(t *testing.T) {
 	}
 	server := newTestWalletServer(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/wallet", strings.NewReader(`{
+	req := httptest.NewRequest(http.MethodPost, "/wallets", strings.NewReader(`{
 		"user_id":10,
 		"currency":"USD"
 	}`))
@@ -137,7 +137,7 @@ func TestCreateWallet_Contract_InternalServerError(t *testing.T) {
 	}
 	server := newTestWalletServer(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/wallet", strings.NewReader(`{
+	req := httptest.NewRequest(http.MethodPost, "/wallets", strings.NewReader(`{
 		"user_id":10,
 		"currency":"USD"
 	}`))
@@ -167,10 +167,10 @@ func TestListUserWallets_Contract_Ok(t *testing.T) {
 				{
 					ID:          1,
 					UserID:      domain.UserID(userID),
-					Currency:    "USD",
+					Currency:    domain.CurrencyUSD,
+					Status:      domain.StatusActive,
 					TotalAmount: 10010,
 					HeldAmount:  100,
-					Status:      "active",
 					CreatedAt:   createdAt,
 					UpdatedAt:   &updatedAt,
 				},
@@ -219,26 +219,6 @@ func TestListUserWallets_Contract_Unauthorized(t *testing.T) {
 
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
 	require.Contains(t, rec.Body.String(), "session not found")
-}
-
-func TestListUserWallets_Contract_Forbidden(t *testing.T) {
-	t.Parallel()
-
-	svc := &walletServiceMock{
-		listWalletsFn: func(_ context.Context, _ int64) ([]*domain.Wallet, error) {
-			return nil, errs.ErrAccessDenied
-		},
-	}
-	server := newTestWalletServer(svc)
-
-	req := httptest.NewRequest(http.MethodGet, "/wallets/10", nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusForbidden, rec.Code)
-	require.Contains(t, rec.Body.String(), "access denied")
 }
 
 func TestListUserWallets_Contract_InternalServerError(t *testing.T) {

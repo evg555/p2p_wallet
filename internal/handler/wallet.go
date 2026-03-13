@@ -28,7 +28,7 @@ func (h *handler) CreateWallet(ctx context.Context, req api.CreateWalletRequestO
 	if err != nil {
 		var resp api.CreateWalletResponseObject
 		switch true {
-		case errors.Is(err, errs.ErrSessionNotFound):
+		case errors.Is(err, errs.ErrSessionNotFound) || errors.Is(err, errs.ErrUserNotFound):
 			resp = api.CreateWallet401JSONResponse{
 				Code:    "not found",
 				Message: err.Error(),
@@ -48,8 +48,8 @@ func (h *handler) CreateWallet(ctx context.Context, req api.CreateWalletRequestO
 	resp := api.CreateWallet201JSONResponse{
 		Id:        int64(wallet.ID),
 		UserId:    int64(wallet.UserID),
-		Currency:  api.WalletResponseCurrency(wallet.Currency),
-		Status:    api.WalletResponseStatus(wallet.Status),
+		Currency:  api.WalletResponseCurrency(wallet.Currency.String()),
+		Status:    api.WalletResponseStatus(wallet.Status.String()),
 		CreatedAt: wallet.CreatedAt,
 	}
 
@@ -61,14 +61,9 @@ func (h *handler) ListUserWallets(ctx context.Context, req api.ListUserWalletsRe
 	if err != nil {
 		var resp api.ListUserWalletsResponseObject
 		switch true {
-		case errors.Is(err, errs.ErrSessionNotFound):
+		case errors.Is(err, errs.ErrSessionNotFound) || errors.Is(err, errs.ErrUserNotFound):
 			resp = api.ListUserWallets401JSONResponse{
 				Code:    "not found",
-				Message: err.Error(),
-			}
-		case errors.Is(err, errs.ErrAccessDenied):
-			resp = api.ListUserWallets403JSONResponse{
-				Code:    "conflict",
 				Message: err.Error(),
 			}
 		default:
@@ -88,8 +83,8 @@ func (h *handler) ListUserWallets(ctx context.Context, req api.ListUserWalletsRe
 
 		respWallets = append(respWallets, api.WalletItem{
 			Id:          int64(wallet.ID),
-			Currency:    api.WalletItemCurrency(wallet.Currency),
-			Status:      api.WalletItemStatus(wallet.Status),
+			Currency:    api.WalletItemCurrency(wallet.Currency.String()),
+			Status:      api.WalletItemStatus(wallet.Status.String()),
 			HeldAmount:  wallet.HeldAmount,
 			TotalAmount: wallet.TotalAmount,
 			CreatedAt:   wallet.CreatedAt,
