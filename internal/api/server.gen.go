@@ -26,7 +26,7 @@ type ServerInterface interface {
 	// (POST /users/{id}/logout)
 	LogoutUser(w http.ResponseWriter, r *http.Request, id UserId)
 	// Создание нового кошелька
-	// (POST /wallet)
+	// (POST /wallets)
 	CreateWallet(w http.ResponseWriter, r *http.Request)
 	// Получение кошельков пользователя
 	// (GET /wallets/{user_id})
@@ -56,7 +56,7 @@ func (_ Unimplemented) LogoutUser(w http.ResponseWriter, r *http.Request, id Use
 }
 
 // Создание нового кошелька
-// (POST /wallet)
+// (POST /wallets)
 func (_ Unimplemented) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -309,7 +309,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/users/{id}/logout", wrapper.LogoutUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/wallet", wrapper.CreateWallet)
+		r.Post(options.BaseURL+"/wallets", wrapper.CreateWallet)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/wallets/{user_id}", wrapper.ListUserWallets)
@@ -542,15 +542,6 @@ func (response ListUserWallets401JSONResponse) VisitListUserWalletsResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListUserWallets403JSONResponse ErrorResponse
-
-func (response ListUserWallets403JSONResponse) VisitListUserWalletsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Вход в систему
@@ -563,7 +554,7 @@ type StrictServerInterface interface {
 	// (POST /users/{id}/logout)
 	LogoutUser(ctx context.Context, request LogoutUserRequestObject) (LogoutUserResponseObject, error)
 	// Создание нового кошелька
-	// (POST /wallet)
+	// (POST /wallets)
 	CreateWallet(ctx context.Context, request CreateWalletRequestObject) (CreateWalletResponseObject, error)
 	// Получение кошельков пользователя
 	// (GET /wallets/{user_id})
