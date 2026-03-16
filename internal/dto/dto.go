@@ -10,3 +10,8 @@ type RegisterInput struct {
 	Name     string
 	LastName string
 }
+
+type CreateWalletInput struct {
+	UserID   int64
+	Currency string
+}

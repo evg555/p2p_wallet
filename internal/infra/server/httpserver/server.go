@@ -70,7 +70,7 @@ func (s *server) Close(ctx context.Context) {
 
 func buildRouter(log Logger, h api.StrictServerInterface, checker readinessChecker) http.Handler {
 	loader := openapi3.NewLoader()
-	swagger, err := loader.LoadFromFile("spec/openapi/users.yaml")
+	swagger, err := loader.LoadFromFile("spec/openapi/p2p-wallet.yaml")
 	if err != nil {
 		log.Error("load openapi", "error", err)
 	}

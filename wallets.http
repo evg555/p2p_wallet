@@ -1,0 +1,37 @@
+@host = http://localhost:8080
+@contentType = application/json
+@userId = 22
+@sessionId = 019c94f1-447d-70a1-8ce0-9da84ac8db72
+
+### Создание кошелька (нужна cookie session_id)
+POST {{host}}/wallets
+Content-Type: {{contentType}}
+Cookie: session_id={{sessionId}}
+
+{
+  "user_id": {{userId}},
+  "currency": "EUR"
+}
+
+### Получение списка кошельков пользователя (нужна cookie session_id)
+GET {{host}}/wallets/{{userId}}
+Cookie: session_id={{sessionId}}
+
+### Пример ошибки создания: нет cookie session_id
+POST {{host}}/wallets
+Content-Type: {{contentType}}
+
+{
+  "user_id": {{userId}},
+  "currency": "USD"
+}
+
+### Пример ошибки создания: кошелек уже существует для этой валюты
+POST {{host}}/wallets
+Content-Type: {{contentType}}
+Cookie: session_id={{sessionId}}
+
+{
+  "user_id": {{userId}},
+  "currency": "EUR"
+}

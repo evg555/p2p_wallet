@@ -64,9 +64,16 @@ func main() {
 	var userRepo service.UserRepo = repository.NewUserPostgresRepo(postgresClient)
 	userRepo = repository.NewUserRepoWithTracing(userRepo)
 	userRepo = repository.NewUserRepoWithMetrics(userRepo)
+
+	var walletRepo service.WalletRepo = repository.NewWalletPostgresRepo(postgresClient)
+	walletRepo = repository.NewWalletRepoWithCache(walletRepo)
+	walletRepo = repository.NewWalletRepoWithTracing(walletRepo)
+	walletRepo = repository.NewWalletRepoWithMetrics(walletRepo)
+
 	sessionRepo := repository.NewSessionRepo()
-	userSrv := service.New(log, userRepo, sessionRepo)
-	h := handler.New(userSrv)
+	userSrv := service.NewAuthService(log, userRepo, sessionRepo)
+	walletSrv := service.NewWalletService(log, userRepo, walletRepo, sessionRepo)
+	h := handler.New(userSrv, walletSrv)
 	srv := httpserver.NewServer(cfg.ServerConfig, log, h, postgresClient)
 
 	go func() {

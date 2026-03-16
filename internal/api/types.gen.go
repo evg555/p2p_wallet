@@ -11,10 +11,54 @@ const (
 	SessionCookieAuthScopes = "SessionCookieAuth.Scopes"
 )
 
+// Defines values for CreateWalletRequestCurrency.
+const (
+	CreateWalletRequestCurrencyEUR CreateWalletRequestCurrency = "EUR"
+	CreateWalletRequestCurrencyUSD CreateWalletRequestCurrency = "USD"
+)
+
+// Defines values for WalletItemCurrency.
+const (
+	WalletItemCurrencyEUR WalletItemCurrency = "EUR"
+	WalletItemCurrencyUSD WalletItemCurrency = "USD"
+)
+
+// Defines values for WalletItemStatus.
+const (
+	WalletItemStatusActive  WalletItemStatus = "active"
+	WalletItemStatusBlocked WalletItemStatus = "blocked"
+)
+
+// Defines values for WalletResponseCurrency.
+const (
+	EUR WalletResponseCurrency = "EUR"
+	USD WalletResponseCurrency = "USD"
+)
+
+// Defines values for WalletResponseStatus.
+const (
+	WalletResponseStatusActive  WalletResponseStatus = "active"
+	WalletResponseStatusBlocked WalletResponseStatus = "blocked"
+)
+
+// CreateWalletRequest defines model for CreateWalletRequest.
+type CreateWalletRequest struct {
+	Currency CreateWalletRequestCurrency `json:"currency"`
+	UserId   int64                       `json:"user_id"`
+}
+
+// CreateWalletRequestCurrency defines model for CreateWalletRequest.Currency.
+type CreateWalletRequestCurrency string
+
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+// ListWalletsResponse defines model for ListWalletsResponse.
+type ListWalletsResponse struct {
+	Wallets []WalletItem `json:"wallets"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -53,11 +97,53 @@ type UserResponse struct {
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
+// WalletItem defines model for WalletItem.
+type WalletItem struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Currency  WalletItemCurrency `json:"currency"`
+
+	// HeldAmount Удержанный баланс в минорах
+	HeldAmount int64            `json:"held_amount"`
+	Id         int64            `json:"id"`
+	Status     WalletItemStatus `json:"status"`
+
+	// TotalAmount Общий баланс в минорах
+	TotalAmount int64     `json:"total_amount"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// WalletItemCurrency defines model for WalletItem.Currency.
+type WalletItemCurrency string
+
+// WalletItemStatus defines model for WalletItem.Status.
+type WalletItemStatus string
+
+// WalletResponse defines model for WalletResponse.
+type WalletResponse struct {
+	CreatedAt time.Time              `json:"created_at"`
+	Currency  WalletResponseCurrency `json:"currency"`
+	Id        int64                  `json:"id"`
+	Status    WalletResponseStatus   `json:"status"`
+	UserId    int64                  `json:"user_id"`
+}
+
+// WalletResponseCurrency defines model for WalletResponse.Currency.
+type WalletResponseCurrency string
+
+// WalletResponseStatus defines model for WalletResponse.Status.
+type WalletResponseStatus string
+
 // UserId defines model for UserId.
 type UserId = int64
+
+// WalletUserId defines model for WalletUserId.
+type WalletUserId = int64
 
 // LoginUserJSONRequestBody defines body for LoginUser for application/json ContentType.
 type LoginUserJSONRequestBody = LoginRequest
 
 // RegisterUserJSONRequestBody defines body for RegisterUser for application/json ContentType.
 type RegisterUserJSONRequestBody = RegisterRequest
+
+// CreateWalletJSONRequestBody defines body for CreateWallet for application/json ContentType.
+type CreateWalletJSONRequestBody = CreateWalletRequest

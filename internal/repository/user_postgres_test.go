@@ -86,7 +86,7 @@ func TestUserPostgresRepoGetByID(t *testing.T) {
 		saved, err := repo.Save(ctx, input)
 		require.NoError(t, err)
 
-		got, err := repo.GetByID(ctx, saved.ID)
+		got, err := repo.GetByID(ctx, int64(saved.ID))
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		require.Equal(t, saved.ID, got.ID)
@@ -184,7 +184,16 @@ func migrationDirsWithSQL(root string) ([]string, error) {
 		return nil, err
 	}
 
-	dirs := make([]string, 0, len(entries))
+	dirs := make([]string, 0, len(entries)+1)
+
+	rootMatches, err := filepath.Glob(filepath.Join(root, "*.sql"))
+	if err != nil {
+		return nil, err
+	}
+	if len(rootMatches) > 0 {
+		dirs = append(dirs, root)
+	}
+
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue

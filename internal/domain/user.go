@@ -11,8 +11,10 @@ import (
 
 var maxFieldLength = 50
 
+type UserID int64
+
 type User struct {
-	ID        int64
+	ID        UserID
 	Login     string
 	Password  string
 	FirstName string

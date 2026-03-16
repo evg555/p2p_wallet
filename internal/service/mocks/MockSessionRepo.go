@@ -23,9 +23,9 @@ func (_m *MockSessionRepo) EXPECT() *MockSessionRepo_Expecter {
 	return &MockSessionRepo_Expecter{mock: &_m.Mock}
 }
 
-// Delete provides a mock function with given fields: id
-func (_m *MockSessionRepo) Delete(id int64) {
-	_m.Called(id)
+// Delete provides a mock function with given fields: key
+func (_m *MockSessionRepo) Delete(key domain.SessionID) {
+	_m.Called(key)
 }
 
 // MockSessionRepo_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
@@ -34,14 +34,14 @@ type MockSessionRepo_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
-//   - id int64
-func (_e *MockSessionRepo_Expecter) Delete(id interface{}) *MockSessionRepo_Delete_Call {
-	return &MockSessionRepo_Delete_Call{Call: _e.mock.On("Delete", id)}
+//   - key domain.SessionID
+func (_e *MockSessionRepo_Expecter) Delete(key interface{}) *MockSessionRepo_Delete_Call {
+	return &MockSessionRepo_Delete_Call{Call: _e.mock.On("Delete", key)}
 }
 
-func (_c *MockSessionRepo_Delete_Call) Run(run func(id int64)) *MockSessionRepo_Delete_Call {
+func (_c *MockSessionRepo_Delete_Call) Run(run func(key domain.SessionID)) *MockSessionRepo_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64))
+		run(args[0].(domain.SessionID))
 	})
 	return _c
 }
@@ -51,32 +51,34 @@ func (_c *MockSessionRepo_Delete_Call) Return() *MockSessionRepo_Delete_Call {
 	return _c
 }
 
-func (_c *MockSessionRepo_Delete_Call) RunAndReturn(run func(int64)) *MockSessionRepo_Delete_Call {
+func (_c *MockSessionRepo_Delete_Call) RunAndReturn(run func(domain.SessionID)) *MockSessionRepo_Delete_Call {
 	_c.Run(run)
 	return _c
 }
 
-// Get provides a mock function with given fields: id
-func (_m *MockSessionRepo) Get(id int64) (domain.SessionID, error) {
-	ret := _m.Called(id)
+// Get provides a mock function with given fields: key
+func (_m *MockSessionRepo) Get(key domain.SessionID) (*domain.Session, error) {
+	ret := _m.Called(key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 domain.SessionID
+	var r0 *domain.Session
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64) (domain.SessionID, error)); ok {
-		return rf(id)
+	if rf, ok := ret.Get(0).(func(domain.SessionID) (*domain.Session, error)); ok {
+		return rf(key)
 	}
-	if rf, ok := ret.Get(0).(func(int64) domain.SessionID); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(domain.SessionID) *domain.Session); ok {
+		r0 = rf(key)
 	} else {
-		r0 = ret.Get(0).(domain.SessionID)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Session)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(id)
+	if rf, ok := ret.Get(1).(func(domain.SessionID) error); ok {
+		r1 = rf(key)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -90,31 +92,31 @@ type MockSessionRepo_Get_Call struct {
 }
 
 // Get is a helper method to define mock.On call
-//   - id int64
-func (_e *MockSessionRepo_Expecter) Get(id interface{}) *MockSessionRepo_Get_Call {
-	return &MockSessionRepo_Get_Call{Call: _e.mock.On("Get", id)}
+//   - key domain.SessionID
+func (_e *MockSessionRepo_Expecter) Get(key interface{}) *MockSessionRepo_Get_Call {
+	return &MockSessionRepo_Get_Call{Call: _e.mock.On("Get", key)}
 }
 
-func (_c *MockSessionRepo_Get_Call) Run(run func(id int64)) *MockSessionRepo_Get_Call {
+func (_c *MockSessionRepo_Get_Call) Run(run func(key domain.SessionID)) *MockSessionRepo_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64))
+		run(args[0].(domain.SessionID))
 	})
 	return _c
 }
 
-func (_c *MockSessionRepo_Get_Call) Return(_a0 domain.SessionID, _a1 error) *MockSessionRepo_Get_Call {
+func (_c *MockSessionRepo_Get_Call) Return(_a0 *domain.Session, _a1 error) *MockSessionRepo_Get_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockSessionRepo_Get_Call) RunAndReturn(run func(int64) (domain.SessionID, error)) *MockSessionRepo_Get_Call {
+func (_c *MockSessionRepo_Get_Call) RunAndReturn(run func(domain.SessionID) (*domain.Session, error)) *MockSessionRepo_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Set provides a mock function with given fields: id, v, ttl
-func (_m *MockSessionRepo) Set(id int64, v domain.SessionID, ttl time.Duration) {
-	_m.Called(id, v, ttl)
+// Set provides a mock function with given fields: key, v, ttl
+func (_m *MockSessionRepo) Set(key domain.SessionID, v *domain.Session, ttl time.Duration) {
+	_m.Called(key, v, ttl)
 }
 
 // MockSessionRepo_Set_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Set'
@@ -123,16 +125,16 @@ type MockSessionRepo_Set_Call struct {
 }
 
 // Set is a helper method to define mock.On call
-//   - id int64
-//   - v domain.SessionID
+//   - key domain.SessionID
+//   - v *domain.Session
 //   - ttl time.Duration
-func (_e *MockSessionRepo_Expecter) Set(id interface{}, v interface{}, ttl interface{}) *MockSessionRepo_Set_Call {
-	return &MockSessionRepo_Set_Call{Call: _e.mock.On("Set", id, v, ttl)}
+func (_e *MockSessionRepo_Expecter) Set(key interface{}, v interface{}, ttl interface{}) *MockSessionRepo_Set_Call {
+	return &MockSessionRepo_Set_Call{Call: _e.mock.On("Set", key, v, ttl)}
 }
 
-func (_c *MockSessionRepo_Set_Call) Run(run func(id int64, v domain.SessionID, ttl time.Duration)) *MockSessionRepo_Set_Call {
+func (_c *MockSessionRepo_Set_Call) Run(run func(key domain.SessionID, v *domain.Session, ttl time.Duration)) *MockSessionRepo_Set_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(domain.SessionID), args[2].(time.Duration))
+		run(args[0].(domain.SessionID), args[1].(*domain.Session), args[2].(time.Duration))
 	})
 	return _c
 }
@@ -142,7 +144,7 @@ func (_c *MockSessionRepo_Set_Call) Return() *MockSessionRepo_Set_Call {
 	return _c
 }
 
-func (_c *MockSessionRepo_Set_Call) RunAndReturn(run func(int64, domain.SessionID, time.Duration)) *MockSessionRepo_Set_Call {
+func (_c *MockSessionRepo_Set_Call) RunAndReturn(run func(domain.SessionID, *domain.Session, time.Duration)) *MockSessionRepo_Set_Call {
 	_c.Run(run)
 	return _c
 }

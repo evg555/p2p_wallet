@@ -16,12 +16,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+type testLogger struct{}
+
+func (l *testLogger) Info(_ string, _ ...any) {}
+func (l *testLogger) Warn(_ string, _ ...any) {}
+
 func TestRegister(t *testing.T) {
 	ctx := context.Background()
 	userRepo := mocks.NewMockUserRepo(t)
 	sessionRepo := mocks.NewMockSessionRepo(t)
-	logger := mocks.NewMockLogger(t)
-	svc := New(logger, userRepo, sessionRepo)
+	logger := &testLogger{}
+	svc := NewAuthService(logger, userRepo, sessionRepo)
 
 	input := dto.RegisterInput{
 		LoginInput: dto.LoginInput{
@@ -55,8 +60,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db down")
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, repoErr)
@@ -72,8 +77,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(nil, errs.ErrUserNotFound)
 
@@ -86,8 +91,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(&domain.User{
 			ID:       1,
@@ -104,8 +109,8 @@ func TestLogin(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		user, err := domain.NewUser("john", "secret", "John", "Doe")
 		assert.NoError(t, err)
@@ -114,12 +119,20 @@ func TestLogin(t *testing.T) {
 		user.CreatedAt = time.Now()
 
 		userRepo.EXPECT().GetByLogin(ctx, "john").Return(user, nil)
-		sessionRepo.EXPECT().Set(int64(1), mock.Anything, sessionTTL).Return()
+		sessionRepo.EXPECT().
+			Set(
+				mock.Anything,
+				mock.MatchedBy(func(s *domain.Session) bool {
+					return s != nil && s.UserID == user.ID
+				}),
+				sessionTTL,
+			).
+			Return()
 
 		got, err := svc.Login(ctx, dto.LoginInput{Login: "john", Password: "secret"})
 		assert.NoError(t, err)
 		assert.NotNil(t, got)
-		assert.Equal(t, int64(1), got.UserID)
+		assert.Equal(t, domain.UserID(1), got.UserID)
 		assert.Equal(t, "john", got.UserLogin)
 		assert.NotEmpty(t, got.SessionID)
 	})
@@ -130,23 +143,24 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		sessionRepo.EXPECT().Get(int64(1)).Return("", errors.New("cache fail"))
+		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(nil, errors.New("cache fail"))
 
 		err := svc.Logout(ctx, 1)
 		assert.ErrorIs(t, err, errs.ErrSessionNotFound)
 	})
 
-	t.Run("access denied when session mismatch", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "ctx-session")
+	t.Run("access denied when session id is missing in context", func(t *testing.T) {
+		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		sessionRepo.EXPECT().Get(int64(1)).Return("stored-session", nil)
+		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
 
 		err := svc.Logout(ctx, 1)
 		assert.ErrorIs(t, err, errs.ErrAccessDenied)
@@ -156,11 +170,10 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db fail")
-		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, repoErr)
 
 		err := svc.Logout(ctx, 1)
@@ -173,10 +186,9 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
 
 		err := svc.Logout(ctx, 1)
@@ -187,12 +199,15 @@ func TestLogout(t *testing.T) {
 		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := mocks.NewMockLogger(t)
-		svc := New(logger, userRepo, sessionRepo)
+		logger := &testLogger{}
+		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		sessionRepo.EXPECT().Get(int64(1)).Return("sid", nil)
+		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
+			ID:     domain.SessionID("sid"),
+			UserID: domain.UserID(1),
+		}, nil)
 		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Delete(int64(1)).Return()
+		sessionRepo.EXPECT().Delete(domain.SessionID("sid")).Return()
 
 		err := svc.Logout(ctx, 1)
 		assert.NoError(t, err)
