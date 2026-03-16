@@ -66,6 +66,7 @@ func main() {
 	userRepo = repository.NewUserRepoWithMetrics(userRepo)
 
 	var walletRepo service.WalletRepo = repository.NewWalletPostgresRepo(postgresClient)
+	walletRepo = repository.NewWalletRepoWithCache(walletRepo)
 	walletRepo = repository.NewWalletRepoWithTracing(walletRepo)
 	walletRepo = repository.NewWalletRepoWithMetrics(walletRepo)
 
