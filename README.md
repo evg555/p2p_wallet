@@ -1,6 +1,4 @@
-# P2P цифровой кошелек (Auth Service)
-
-Сервис аутентификации для P2P-кошелька на Go.
+# P2P цифровой кошелек
 
 ## Зависимости
 
@@ -101,4 +99,4 @@ docker push <registry>/p2p-wallet-auth:$VERSION
 - `task gen-api` - сгенерировать OpenAPI-код
 - `task gen-mocks` - сгенерировать моки
 - `task migrate-up` / `task migrate-down` - миграции БД
-- `task docker-run` - пересобрать и поднять сервис `auth` в Docker
+- `task docker-run` - пересобрать и поднять сервис `p2p-wallet` в Docker
