@@ -119,7 +119,7 @@ tasks:
         set -a
         . ./.env
         set +a
-        VERSION=${VERSION} COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose up --build --force-recreate -d auth
+        VERSION=${VERSION} COMMIT_SHA=$(git rev-parse --short HEAD) BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose up --build --force-recreate -d p2p-wallet
 
   migrate-up:
     desc: Apply goose migrations

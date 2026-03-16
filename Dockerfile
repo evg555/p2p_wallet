@@ -20,7 +20,7 @@ WORKDIR /app
 RUN adduser -D -u 10001 appuser
 
 COPY --from=builder /out/auth .
-COPY spec/openapi/users.yaml ./spec/openapi/users.yaml
+COPY spec/openapi/p2p-wallet.yaml ./spec/openapi/p2p-wallet.yaml
 
 USER appuser
 EXPOSE 8080

@@ -1,5 +1,5 @@
 services:
-  auth:
+  p2p-wallet:
     build:
       context: .
       dockerfile: Dockerfile
@@ -7,7 +7,7 @@ services:
         VERSION: ${VERSION:-dev}
         COMMIT_SHA: ${COMMIT_SHA:-unknown}
         BUILD_TIME: ${BUILD_TIME:-unknown}
-    image: p2p-wallet-auth:latest
+    image: p2p-wallet:latest
     env_file:
       - .env
     depends_on:
