@@ -16,6 +16,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Перевод средств между балансами кошельков
+	// (POST /balance/transfer)
+	TransferBalance(w http.ResponseWriter, r *http.Request, params TransferBalanceParams)
 	// Вход в систему
 	// (POST /users/login)
 	LoginUser(w http.ResponseWriter, r *http.Request)
@@ -36,6 +39,12 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Перевод средств между балансами кошельков
+// (POST /balance/transfer)
+func (_ Unimplemented) TransferBalance(w http.ResponseWriter, r *http.Request, params TransferBalanceParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Вход в систему
 // (POST /users/login)
@@ -75,6 +84,56 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// TransferBalance operation middleware
+func (siw *ServerInterfaceWrapper) TransferBalance(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionCookieAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TransferBalanceParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Idempotency-Key")]; found {
+		var XIdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Idempotency-Key", valueList[0], &XIdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Idempotency-Key", Err: err})
+			return
+		}
+
+		params.XIdempotencyKey = XIdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter X-Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TransferBalance(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // LoginUser operation middleware
 func (siw *ServerInterfaceWrapper) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -300,6 +359,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/balance/transfer", wrapper.TransferBalance)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/users/login", wrapper.LoginUser)
 	})
 	r.Group(func(r chi.Router) {
@@ -316,6 +378,51 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type TransferBalanceRequestObject struct {
+	Params TransferBalanceParams
+	Body   *TransferBalanceJSONRequestBody
+}
+
+type TransferBalanceResponseObject interface {
+	VisitTransferBalanceResponse(w http.ResponseWriter) error
+}
+
+type TransferBalance200JSONResponse BalanceTransferResponse
+
+func (response TransferBalance200JSONResponse) VisitTransferBalanceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type TransferBalance400JSONResponse ErrorResponse
+
+func (response TransferBalance400JSONResponse) VisitTransferBalanceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type TransferBalance401JSONResponse ErrorResponse
+
+func (response TransferBalance401JSONResponse) VisitTransferBalanceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type TransferBalance422JSONResponse ErrorResponse
+
+func (response TransferBalance422JSONResponse) VisitTransferBalanceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type LoginUserRequestObject struct {
@@ -544,6 +651,9 @@ func (response ListUserWallets401JSONResponse) VisitListUserWalletsResponse(w ht
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Перевод средств между балансами кошельков
+	// (POST /balance/transfer)
+	TransferBalance(ctx context.Context, request TransferBalanceRequestObject) (TransferBalanceResponseObject, error)
 	// Вход в систему
 	// (POST /users/login)
 	LoginUser(ctx context.Context, request LoginUserRequestObject) (LoginUserResponseObject, error)
@@ -588,6 +698,39 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// TransferBalance operation middleware
+func (sh *strictHandler) TransferBalance(w http.ResponseWriter, r *http.Request, params TransferBalanceParams) {
+	var request TransferBalanceRequestObject
+
+	request.Params = params
+
+	var body TransferBalanceJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TransferBalance(ctx, request.(TransferBalanceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TransferBalance")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TransferBalanceResponseObject); ok {
+		if err := validResponse.VisitTransferBalanceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // LoginUser operation middleware
