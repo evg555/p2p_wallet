@@ -372,7 +372,7 @@ func TestLogoutUser_Contract_InternalServerError(t *testing.T) {
 }
 
 func newTestServer(svc handler.AuthService) http.Handler {
-	h := handler.New(svc, nil)
+	h := handler.New(svc, nil, nil)
 	return api.Handler(api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)

@@ -6,8 +6,9 @@ import (
 )
 
 type handler struct {
-	userSrv   AuthService
-	walletSrv WalletService
+	userSrv    AuthService
+	walletSrv  WalletService
+	balanceSrv BalanceService
 }
 
 var _ api.StrictServerInterface = (*handler)(nil)
@@ -15,9 +16,11 @@ var _ api.StrictServerInterface = (*handler)(nil)
 func New(
 	userSrv AuthService,
 	walletSrv WalletService,
+	balanceSrv BalanceService,
 ) *handler {
 	return &handler{
-		userSrv:   userSrv,
-		walletSrv: walletSrv,
+		userSrv:    userSrv,
+		walletSrv:  walletSrv,
+		balanceSrv: balanceSrv,
 	}
 }

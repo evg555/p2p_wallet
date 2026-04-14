@@ -60,7 +60,7 @@ func TestCreateWallet_Contract_Created(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 	require.Equal(t, int64(1), resp.Id)
 	require.Equal(t, int64(10), resp.UserId)
-	require.Equal(t, api.USD, resp.Currency)
+	require.Equal(t, api.WalletResponseCurrencyUSD, resp.Currency)
 	require.Equal(t, api.WalletResponseStatusActive, resp.Status)
 	require.Equal(t, createdAt, resp.CreatedAt)
 }
@@ -245,7 +245,7 @@ func TestListUserWallets_Contract_InternalServerError(t *testing.T) {
 }
 
 func newTestWalletServer(svc handler.WalletService) http.Handler {
-	h := handler.New(nil, svc)
+	h := handler.New(nil, svc, nil)
 	return api.Handler(api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
