@@ -17,13 +17,6 @@ type WalletService interface {
 }
 
 func (h *handler) CreateWallet(ctx context.Context, req api.CreateWalletRequestObject) (api.CreateWalletResponseObject, error) {
-	if req.Body == nil {
-		return api.CreateWallet400JSONResponse{
-			Code:    "bad request",
-			Message: "request body is required",
-		}, nil
-	}
-
 	wallet, err := h.walletSrv.CreateWallet(ctx, reqToCreateWalletDTO(req.Body))
 	if err != nil {
 		var resp api.CreateWalletResponseObject

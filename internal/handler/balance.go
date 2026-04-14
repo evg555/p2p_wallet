@@ -15,13 +15,6 @@ type BalanceService interface {
 }
 
 func (h *handler) TransferBalance(ctx context.Context, req api.TransferBalanceRequestObject) (api.TransferBalanceResponseObject, error) {
-	if req.Body == nil {
-		return api.TransferBalance400JSONResponse{
-			Code:    "bad request",
-			Message: "request body is required",
-		}, nil
-	}
-
 	transaction, err := h.balanceSrv.Transfer(ctx, reqToTransferBalanceDTO(req.Params, req.Body))
 	if err != nil {
 		var resp api.TransferBalanceResponseObject

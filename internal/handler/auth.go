@@ -19,13 +19,6 @@ type AuthService interface {
 }
 
 func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject) (api.LoginUserResponseObject, error) {
-	if req.Body == nil {
-		return api.LoginUser400JSONResponse{
-			Code:    "bad request",
-			Message: "request body is required",
-		}, nil
-	}
-
 	res, err := h.userSrv.Login(ctx, reqToLoginDTO(req.Body))
 	if err != nil {
 		var resp api.LoginUserResponseObject
@@ -70,13 +63,6 @@ func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject)
 }
 
 func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestObject) (api.RegisterUserResponseObject, error) {
-	if req.Body == nil {
-		return api.RegisterUser400JSONResponse{
-			Code:    "bad request",
-			Message: "request body is required",
-		}, nil
-	}
-
 	user, err := h.userSrv.Register(ctx, reqToRegisterDTO(req.Body))
 	if err != nil {
 		var resp api.RegisterUserResponseObject
