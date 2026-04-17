@@ -10,11 +10,6 @@ import (
 	"p2p_wallet/internal/errs"
 )
 
-type WalletRepo interface {
-	Save(ctx context.Context, wallet *domain.Wallet) (*domain.Wallet, error)
-	FindByUserID(ctx context.Context, userID domain.UserID) ([]*domain.Wallet, error)
-}
-
 type walletService struct {
 	log         Logger
 	userRepo    UserRepo
@@ -81,7 +76,7 @@ func (s *walletService) ListWallets(ctx context.Context, userID int64) ([]*domai
 }
 
 func (s *walletService) findUser(ctx context.Context, userID int64) (*domain.User, error) {
-	user, err := s.userRepo.GetByID(ctx, userID)
+	user, err := s.userRepo.GetByID(ctx, domain.UserID(userID))
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
 			s.log.Warn("create wallet failed", withReqID(ctx, "user_id", userID, "error", err.Error())...)

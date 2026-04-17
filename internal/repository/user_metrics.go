@@ -41,7 +41,7 @@ func (m *metricsUserRepo) GetByLogin(ctx context.Context, login string) (*domain
 	return res, err
 }
 
-func (m *metricsUserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
+func (m *metricsUserRepo) GetByID(ctx context.Context, id domain.UserID) (*domain.User, error) {
 	const op = "user.get_by_id"
 
 	start := time.Now()

@@ -25,7 +25,7 @@ func TestCreateWallet(t *testing.T) {
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
 		repoErr := errors.New("db down")
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, repoErr)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(nil, repoErr)
 
 		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{UserID: 1, Currency: "EUR"})
 		assert.Nil(t, got)
@@ -42,7 +42,7 @@ func TestCreateWallet(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 
 		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{UserID: 1, Currency: "EUR"})
 		assert.Nil(t, got)
@@ -57,7 +57,7 @@ func TestCreateWallet(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
 			ID:     domain.SessionID("sid"),
 			UserID: domain.UserID(1),
@@ -77,7 +77,7 @@ func TestCreateWallet(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
 			ID:     domain.SessionID("sid"),
 			UserID: domain.UserID(1),
@@ -97,7 +97,7 @@ func TestCreateWallet(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
 			ID:     domain.SessionID("sid"),
 			UserID: domain.UserID(1),
@@ -136,7 +136,7 @@ func TestListWallets(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(nil, errs.ErrUserNotFound)
 
 		got, err := svc.ListWallets(ctx, 1)
 		assert.Nil(t, got)
@@ -152,7 +152,7 @@ func TestListWallets(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
 			ID:     domain.SessionID("sid"),
 			UserID: domain.UserID(1),
@@ -176,7 +176,7 @@ func TestListWallets(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
 			ID:     domain.SessionID("sid"),
 			UserID: domain.UserID(1),

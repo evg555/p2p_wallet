@@ -54,6 +54,9 @@ func (r *cachedWalletRepo) FindByUserID(ctx context.Context, userID domain.UserI
 
 	return wallets, nil
 }
+func (r *cachedWalletRepo) FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error) {
+	panic("implement me")
+}
 
 func walletListCacheKey(userID domain.UserID) string {
 	return fmt.Sprintf("wallets:user:%d", userID)

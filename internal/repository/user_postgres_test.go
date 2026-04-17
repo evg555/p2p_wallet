@@ -86,7 +86,7 @@ func TestUserPostgresRepoGetByID(t *testing.T) {
 		saved, err := repo.Save(ctx, input)
 		require.NoError(t, err)
 
-		got, err := repo.GetByID(ctx, int64(saved.ID))
+		got, err := repo.GetByID(ctx, saved.ID)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		require.Equal(t, saved.ID, got.ID)

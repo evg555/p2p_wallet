@@ -17,7 +17,7 @@ var sessionTTL = 1 * time.Hour
 type UserRepo interface {
 	Save(ctx context.Context, user *domain.User) (*domain.User, error)
 	GetByLogin(ctx context.Context, login string) (*domain.User, error)
-	GetByID(ctx context.Context, id int64) (*domain.User, error)
+	GetByID(ctx context.Context, id domain.UserID) (*domain.User, error)
 }
 
 type SessionRepo interface {
@@ -93,7 +93,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*domain.
 }
 
 func (s *authService) Logout(ctx context.Context, id int64) error {
-	user, err := s.userRepo.GetByID(ctx, id)
+	user, err := s.userRepo.GetByID(ctx, domain.UserID(id))
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
 			s.log.Warn("user logout failed", withReqID(ctx, "user_id", id, "error", err.Error())...)

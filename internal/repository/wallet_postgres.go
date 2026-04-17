@@ -150,3 +150,7 @@ func (w *walletPostgresRepo) FindByUserID(ctx context.Context, userID domain.Use
 
 	return wallets, nil
 }
+
+func (w *walletPostgresRepo) FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error) {
+	panic("implement me")
+}

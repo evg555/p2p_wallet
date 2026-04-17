@@ -134,14 +134,24 @@ func TestCachedWalletRepoSave(t *testing.T) {
 	})
 }
 
+func TestCachedWalletRepoFindByID(t *testing.T) {
+	//TODO: implement me
+}
+
 type stubWalletRepo struct {
 	findByUserIDCalls   int
-	saveCalls           int
 	findByUserIDResult  []*domain.Wallet
 	findByUserIDResults map[domain.UserID][]*domain.Wallet
 	findByUserIDErr     error
-	saveResult          *domain.Wallet
-	saveErr             error
+
+	findByIDCalls   int
+	findByIDResult  *domain.Wallet
+	findByIDResults map[domain.WalletID]*domain.Wallet
+	findByIDErr     error
+
+	saveCalls  int
+	saveResult *domain.Wallet
+	saveErr    error
 }
 
 func (s *stubWalletRepo) Save(_ context.Context, _ *domain.Wallet) (*domain.Wallet, error) {
@@ -164,4 +174,17 @@ func (s *stubWalletRepo) FindByUserID(_ context.Context, userID domain.UserID) (
 	}
 
 	return s.findByUserIDResult, nil
+}
+
+func (s *stubWalletRepo) FindByID(_ context.Context, id domain.WalletID) (*domain.Wallet, error) {
+	s.findByIDCalls++
+	if s.findByIDErr != nil {
+		return nil, s.findByIDErr
+	}
+
+	if s.findByIDResults != nil {
+		return s.findByIDResults[id], nil
+	}
+
+	return s.findByIDResult, nil
 }

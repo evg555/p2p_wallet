@@ -146,7 +146,7 @@ func TestLogout(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(nil, errors.New("cache fail"))
 
 		err := svc.Logout(ctx, 1)
@@ -160,7 +160,7 @@ func TestLogout(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 
 		err := svc.Logout(ctx, 1)
 		assert.ErrorIs(t, err, errs.ErrAccessDenied)
@@ -174,7 +174,7 @@ func TestLogout(t *testing.T) {
 		svc := NewAuthService(logger, userRepo, sessionRepo)
 
 		repoErr := errors.New("db fail")
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, repoErr)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(nil, repoErr)
 
 		err := svc.Logout(ctx, 1)
 		assert.Error(t, err)
@@ -189,7 +189,7 @@ func TestLogout(t *testing.T) {
 		logger := &testLogger{}
 		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(nil, errs.ErrUserNotFound)
 
 		err := svc.Logout(ctx, 1)
 		assert.ErrorIs(t, err, errs.ErrUserNotFound)
@@ -206,7 +206,7 @@ func TestLogout(t *testing.T) {
 			ID:     domain.SessionID("sid"),
 			UserID: domain.UserID(1),
 		}, nil)
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
 		sessionRepo.EXPECT().Delete(domain.SessionID("sid")).Return()
 
 		err := svc.Logout(ctx, 1)

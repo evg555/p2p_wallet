@@ -13,6 +13,10 @@ var maxFieldLength = 50
 
 type UserID int64
 
+func (u UserID) Int64() int64 {
+	return int64(u)
+}
+
 type User struct {
 	ID        UserID
 	Login     string

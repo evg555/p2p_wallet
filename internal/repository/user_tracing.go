@@ -60,7 +60,7 @@ func (r *tracingUserRepo) GetByLogin(ctx context.Context, login string) (*domain
 	return res, err
 }
 
-func (r *tracingUserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
+func (r *tracingUserRepo) GetByID(ctx context.Context, id domain.UserID) (*domain.User, error) {
 	ctx, span := r.tracer.Start(ctx, "repo.user.get_by_id", trace.WithSpanKind(trace.SpanKindClient))
 	span.SetAttributes(
 		attribute.String("db.system", "postgresql"),

@@ -21,7 +21,11 @@ const (
 	CurrencyUSD
 )
 
-type WalletStatus int
+type WalletStatus int64
+
+func (w WalletID) Int64() int64 {
+	return int64(w)
+}
 
 func (s WalletStatus) String() string {
 	statuses := []string{"active", "blocked"}
