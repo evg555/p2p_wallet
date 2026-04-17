@@ -9,18 +9,6 @@ import (
 
 type WalletID int64
 
-type Currency int
-
-func (c Currency) String() string {
-	currencies := []string{"EUR", "USD"}
-	return currencies[c]
-}
-
-const (
-	CurrencyEUR Currency = iota
-	CurrencyUSD
-)
-
 type WalletStatus int64
 
 func (w WalletID) Int64() int64 {

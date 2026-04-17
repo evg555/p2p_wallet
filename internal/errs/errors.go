@@ -17,6 +17,7 @@ var (
 	ErrWalletMismatch     = errors.New("wallet doesn't belong to current user")
 	ErrNotEnoughMoney     = errors.New("not enough money for transfer")
 	ErrCurrencyMismatch   = errors.New("currencies mismatch within transaction")
+	ErrNotPositiveAmount  = errors.New("amount must be positive")
 )
 
 type APIError struct {

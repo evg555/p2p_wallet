@@ -43,17 +43,17 @@ func (h *handler) TransferBalance(ctx context.Context, req api.TransferBalanceRe
 
 	for _, entry := range transaction.Entries {
 		entries = append(entries, api.LedgerEntry{
-			Amount:   entry.Amount,
-			Currency: api.LedgerEntryCurrency(entry.Currency),
+			Amount:   entry.Money.Amount(),
+			Currency: api.LedgerEntryCurrency(entry.Money.Currency()),
 			Id:       entry.ID,
-			WalletId: entry.WalletID,
+			WalletId: entry.WalletID.Int64(),
 		})
 	}
 
 	resp := api.TransferBalance200JSONResponse{
 		Transaction: api.LedgerTransaction{
 			Id:        transaction.ID,
-			Status:    api.LedgerTransactionStatus(transaction.Status),
+			Status:    api.LedgerTransactionStatus(transaction.Status.String()),
 			CreatedAt: transaction.CreatedAt,
 			Entries:   entries,
 		},

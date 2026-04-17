@@ -31,22 +31,21 @@ func TestTransferBalance_Contract_Ok(t *testing.T) {
 		transferFn: func(_ context.Context, input dto.TransferBalanceInput) (*domain.Transaction, error) {
 			gotInput = input
 			gotInputSet = true
+			money := domain.NewMoney(500, domain.CurrencyUSD)
 			return &domain.Transaction{
 				ID:        101,
-				Status:    "completed",
+				Status:    domain.StatusSucceed,
 				CreatedAt: createdAt,
 				Entries: []domain.Entry{
 					{
 						ID:       1,
 						WalletID: 10,
-						Amount:   -500,
-						Currency: "USD",
+						Money:    money.Invert(),
 					},
 					{
 						ID:       2,
 						WalletID: 20,
-						Amount:   500,
-						Currency: "USD",
+						Money:    money,
 					},
 				},
 			}, nil
@@ -75,7 +74,7 @@ func TestTransferBalance_Contract_Ok(t *testing.T) {
 	var resp api.BalanceTransferResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 	require.Equal(t, int64(101), resp.Transaction.Id)
-	require.Equal(t, api.LedgerTransactionStatus("completed"), resp.Transaction.Status)
+	require.Equal(t, api.LedgerTransactionStatus("succeed"), resp.Transaction.Status)
 	require.Equal(t, createdAt, resp.Transaction.CreatedAt)
 	require.Len(t, resp.Transaction.Entries, 2)
 	require.Equal(t, int64(1), resp.Transaction.Entries[0].Id)

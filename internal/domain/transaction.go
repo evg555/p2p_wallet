@@ -1,19 +1,93 @@
 package domain
 
 import (
+	"fmt"
 	"time"
+
+	"p2p_wallet/internal/errs"
 )
+
+const (
+	StatusNew TransactionStatus = iota
+	StatusSucceed
+	StatusFailed
+)
+
+type TransactionStatus int64
+
+func (t TransactionStatus) String() string {
+	statuses := []string{"new", "succeed", "failed"}
+	return statuses[t]
+}
 
 type Transaction struct {
 	ID        int64
-	Status    string
+	Status    TransactionStatus
 	CreatedAt time.Time
 	Entries   []Entry
 }
 
 type Entry struct {
 	ID       int64
-	WalletID int64
-	Amount   int64
-	Currency string
+	WalletID WalletID
+	Money    Money
+}
+
+func NewTransaction(amount int64, fromWallet *Wallet, toWallet *Wallet) (*Transaction, error) {
+	err := validateTransaction(amount, fromWallet, toWallet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transaction: %w", err)
+	}
+
+	money := NewMoney(amount, fromWallet.Currency)
+
+	entryFrom := Entry{
+		WalletID: fromWallet.ID,
+		Money:    money.Invert(),
+	}
+
+	entryTo := Entry{
+		WalletID: toWallet.ID,
+		Money:    money,
+	}
+
+	transaction := &Transaction{
+		Status:    StatusNew,
+		Entries:   []Entry{entryFrom, entryTo},
+		CreatedAt: time.Now(),
+	}
+
+	return transaction, nil
+}
+
+func validateTransaction(amount int64, fromWallet *Wallet, toWallet *Wallet) error {
+	err := validateAmount(amount)
+	if err != nil {
+		return err
+	}
+
+	err = validateWallets(amount, fromWallet, toWallet)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+func validateAmount(amount int64) error {
+	if amount <= 0 {
+		return errs.ErrNotPositiveAmount
+	}
+	return nil
+}
+
+func validateWallets(amount int64, fromWallet *Wallet, toWallet *Wallet) error {
+	if fromWallet.TotalAmount-fromWallet.HeldAmount < amount {
+		return errs.ErrNotEnoughMoney
+	}
+
+	if fromWallet.Currency != toWallet.Currency {
+		return errs.ErrCurrencyMismatch
+	}
+
+	return nil
 }

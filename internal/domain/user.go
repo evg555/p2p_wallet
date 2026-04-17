@@ -28,7 +28,7 @@ type User struct {
 }
 
 func NewUser(login, password, firstName, lastName string) (*User, error) {
-	if err := validate(login, password, firstName, lastName); err != nil {
+	if err := validateUser(login, password, firstName, lastName); err != nil {
 		return nil, fmt.Errorf("user: %w", err)
 	}
 
@@ -61,7 +61,7 @@ func encodePassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func validate(login, password, firstName, lastName string) error {
+func validateUser(login, password, firstName, lastName string) error {
 	err := validateLogin(login)
 	if err != nil {
 		return err
