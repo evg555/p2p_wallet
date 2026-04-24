@@ -15,6 +15,13 @@ func CurrentUser(ctx context.Context) domain.User {
 		return domain.User{}
 	}
 
-	currentUser, _ := ctx.Value(CurrentUserKey).(domain.User)
-	return currentUser
+	if currentUser, ok := ctx.Value(CurrentUserKey).(domain.User); ok {
+		return currentUser
+	}
+
+	if currentUser, ok := ctx.Value(CurrentUserKey).(*domain.User); ok && currentUser != nil {
+		return *currentUser
+	}
+
+	return domain.User{}
 }

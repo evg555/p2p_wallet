@@ -13,6 +13,13 @@ func Session(ctx context.Context) domain.Session {
 		return domain.Session{}
 	}
 
-	session, _ := ctx.Value(CurrentSessionKey).(domain.Session)
-	return session
+	if session, ok := ctx.Value(CurrentSessionKey).(domain.Session); ok {
+		return session
+	}
+
+	if session, ok := ctx.Value(CurrentSessionKey).(*domain.Session); ok && session != nil {
+		return *session
+	}
+
+	return domain.Session{}
 }
