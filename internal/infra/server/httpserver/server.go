@@ -33,8 +33,15 @@ type readinessChecker interface {
 	Ping(ctx context.Context) error
 }
 
-func NewServer(cfg config.ServerConfig, log Logger, h api.StrictServerInterface, checker readinessChecker) *server {
-	router := buildRouter(log, h, checker)
+func NewServer(
+	cfg config.ServerConfig,
+	log Logger,
+	h api.StrictServerInterface,
+	checker readinessChecker,
+	sessionRepo SessionRepository,
+	userRepo UserRepository,
+) *server {
+	router := buildRouter(log, h, checker, sessionRepo, userRepo)
 	addr := buildAddress(cfg)
 
 	srv := &http.Server{
@@ -68,7 +75,13 @@ func (s *server) Close(ctx context.Context) {
 	s.log.Info("http server stopped")
 }
 
-func buildRouter(log Logger, h api.StrictServerInterface, checker readinessChecker) http.Handler {
+func buildRouter(
+	log Logger,
+	h api.StrictServerInterface,
+	checker readinessChecker,
+	sessionRepo SessionRepository,
+	userRepo UserRepository,
+) http.Handler {
 	loader := openapi3.NewLoader()
 	swagger, err := loader.LoadFromFile("spec/openapi/p2p-wallet.yaml")
 	if err != nil {
@@ -86,7 +99,7 @@ func buildRouter(log Logger, h api.StrictServerInterface, checker readinessCheck
 	apiRouter.Use(RequestIDMiddleware)
 	apiRouter.Use(metrics.Middleware)
 	apiRouter.Use(AccessLogMiddleware(log))
-	apiRouter.Use(SessionMiddleware)
+	apiRouter.Use(AuthMiddleware(log, sessionRepo, userRepo))
 	apiRouter.Method(http.MethodGet, metricPath, metrics.Handler())
 
 	openAPIRouter := chi.NewRouter()

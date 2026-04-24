@@ -104,12 +104,12 @@ func TestTransferBalance_Contract_BadRequest(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "can't decode JSON body: EOF")
 }
 
-func TestTransferBalance_Contract_Unauthorized(t *testing.T) {
+func TestTransferBalance_Contract_Forbidden(t *testing.T) {
 	t.Parallel()
 
 	svc := &balanceServiceMock{
 		transferFn: func(_ context.Context, _ dto.TransferBalanceInput) (*domain.Transaction, error) {
-			return nil, errs.ErrSessionNotFound
+			return nil, errs.ErrAccessDenied
 		},
 	}
 	server := newTestBalanceServer(svc)
@@ -125,8 +125,8 @@ func TestTransferBalance_Contract_Unauthorized(t *testing.T) {
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusUnauthorized, rec.Code)
-	require.Contains(t, rec.Body.String(), "session not found")
+	require.Equal(t, http.StatusForbidden, rec.Code)
+	require.Contains(t, rec.Body.String(), "access denied")
 }
 
 func TestTransferBalance_Contract_UnprocessableEntity(t *testing.T) {

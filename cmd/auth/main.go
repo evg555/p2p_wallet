@@ -73,11 +73,11 @@ func main() {
 	sessionRepo := repository.NewSessionRepo()
 
 	userSrv := service.NewAuthService(log, userRepo, sessionRepo)
-	walletSrv := service.NewWalletService(log, userRepo, walletRepo, sessionRepo)
-	balanceSrv := service.NewBalanceService(log, userRepo, walletRepo, sessionRepo)
+	walletSrv := service.NewWalletService(log, walletRepo)
+	balanceSrv := service.NewBalanceService(log, walletRepo)
 
 	h := handler.New(userSrv, walletSrv, balanceSrv)
-	srv := httpserver.NewServer(cfg.ServerConfig, log, h, postgresClient)
+	srv := httpserver.NewServer(cfg.ServerConfig, log, h, postgresClient, sessionRepo, userRepo)
 
 	go func() {
 		if err = srv.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {

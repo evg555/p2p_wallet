@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/domain/helpers/authctx"
 	"p2p_wallet/internal/dto"
 	"p2p_wallet/internal/errs"
 	"p2p_wallet/internal/service/mocks"
@@ -16,92 +17,37 @@ import (
 )
 
 func TestCreateWallet(t *testing.T) {
-	t.Run("user repo error", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
-		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
-
-		repoErr := errors.New("db down")
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(nil, repoErr)
-
-		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{UserID: 1, Currency: "EUR"})
-		assert.Nil(t, got)
-		assert.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "failed to get user by id"))
-		assert.ErrorIs(t, err, repoErr)
-	})
-
-	t.Run("session not found in context", func(t *testing.T) {
-		ctx := context.Background()
-		userRepo := mocks.NewMockUserRepo(t)
-		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
-
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
-
-		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{UserID: 1, Currency: "EUR"})
-		assert.Nil(t, got)
-		assert.ErrorIs(t, err, errs.ErrSessionNotFound)
-	})
-
 	t.Run("invalid currency", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
+		ctx := context.WithValue(context.Background(), authctx.CurrentUserKey, domain.User{ID: 1})
 		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
+		svc := NewWalletService(logger, walletRepo)
 
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
-			ID:     domain.SessionID("sid"),
-			UserID: domain.UserID(1),
-		}, nil)
-
-		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{UserID: 1, Currency: "RUB"})
+		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{Currency: "RUB"})
 		assert.Nil(t, got)
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "wallet: unknown currency RUB")
 	})
 
 	t.Run("wallet already exists", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
+		ctx := context.WithValue(context.Background(), authctx.CurrentUserKey, domain.User{ID: 1})
 		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
+		svc := NewWalletService(logger, walletRepo)
 
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
-			ID:     domain.SessionID("sid"),
-			UserID: domain.UserID(1),
-		}, nil)
 		walletRepo.EXPECT().Save(ctx, mock.AnythingOfType("*domain.Wallet")).Return(nil, errs.ErrWalletAlreadyExist)
 
-		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{UserID: 1, Currency: "EUR"})
+		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{Currency: "EUR"})
 		assert.Nil(t, got)
 		assert.ErrorIs(t, err, errs.ErrWalletAlreadyExist)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
+		ctx := context.WithValue(context.Background(), authctx.CurrentUserKey, domain.User{ID: 1})
 		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
+		svc := NewWalletService(logger, walletRepo)
 
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
-			ID:     domain.SessionID("sid"),
-			UserID: domain.UserID(1),
-		}, nil)
 		walletRepo.EXPECT().Save(ctx, mock.MatchedBy(func(w *domain.Wallet) bool {
 			return w != nil &&
 				w.ID == 0 &&
@@ -117,7 +63,7 @@ func TestCreateWallet(t *testing.T) {
 			return w, nil
 		})
 
-		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{UserID: 1, Currency: "EUR"})
+		got, err := svc.CreateWallet(ctx, dto.CreateWalletInput{Currency: "EUR"})
 		assert.NoError(t, err)
 		assert.NotNil(t, got)
 		assert.Equal(t, domain.WalletID(10), got.ID)
@@ -128,40 +74,16 @@ func TestCreateWallet(t *testing.T) {
 }
 
 func TestListWallets(t *testing.T) {
-	t.Run("user not found", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
-		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
-
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(nil, errs.ErrUserNotFound)
-
-		got, err := svc.ListWallets(ctx, 1)
-		assert.Nil(t, got)
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, errs.ErrUserNotFound)
-	})
-
 	t.Run("wallet repo error", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
+		ctx := context.WithValue(context.Background(), authctx.CurrentUserKey, domain.User{ID: 1})
 		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
-
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
-			ID:     domain.SessionID("sid"),
-			UserID: domain.UserID(1),
-		}, nil)
+		svc := NewWalletService(logger, walletRepo)
 
 		repoErr := errors.New("db fail")
 		walletRepo.EXPECT().FindByUserID(ctx, domain.UserID(1)).Return(nil, repoErr)
 
-		got, err := svc.ListWallets(ctx, 1)
+		got, err := svc.ListWallets(ctx)
 		assert.Nil(t, got)
 		assert.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "failed to get wallets by user id"))
@@ -169,18 +91,10 @@ func TestListWallets(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
+		ctx := context.WithValue(context.Background(), authctx.CurrentUserKey, domain.User{ID: 1})
 		walletRepo := mocks.NewMockWalletRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
-		svc := NewWalletService(logger, userRepo, walletRepo, sessionRepo)
-
-		userRepo.EXPECT().GetByID(ctx, domain.UserID(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
-			ID:     domain.SessionID("sid"),
-			UserID: domain.UserID(1),
-		}, nil)
+		svc := NewWalletService(logger, walletRepo)
 
 		expected := []*domain.Wallet{
 			{ID: 1, UserID: 1, Currency: domain.CurrencyEUR, Status: domain.StatusActive},
@@ -188,7 +102,7 @@ func TestListWallets(t *testing.T) {
 		}
 		walletRepo.EXPECT().FindByUserID(ctx, domain.UserID(1)).Return(expected, nil)
 
-		got, err := svc.ListWallets(ctx, 1)
+		got, err := svc.ListWallets(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, got)
 	})

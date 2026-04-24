@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/domain/helpers/authctx"
 	"p2p_wallet/internal/dto"
 	"p2p_wallet/internal/errs"
 	"p2p_wallet/internal/shared/requestctx"
@@ -92,31 +93,12 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*domain.
 	}, nil
 }
 
-func (s *authService) Logout(ctx context.Context, id int64) error {
-	user, err := s.userRepo.GetByID(ctx, domain.UserID(id))
-	if err != nil {
-		if errors.Is(err, errs.ErrUserNotFound) {
-			s.log.Warn("user logout failed", withReqID(ctx, "user_id", id, "error", err.Error())...)
-		}
+func (s *authService) Logout(ctx context.Context) {
+	session := authctx.Session(ctx)
+	user := authctx.CurrentUser(ctx)
 
-		return fmt.Errorf("userRepo: failed to get user by id: %w", err)
-	}
-
-	sessionID, ok := ctx.Value(domain.CtxKey(domain.SessionKey)).(string)
-	if !ok {
-		s.log.Warn("user logout failed: access denied", withReqID(ctx, "user_id", id)...)
-		return errs.ErrAccessDenied
-	}
-
-	existSession, err := s.sessionRepo.Get(domain.SessionID(sessionID))
-	if err != nil || !existSession.Equal(sessionID) {
-		s.log.Warn("user logout failed", withReqID(ctx, "user_id", id, "error", "session not found")...)
-		return errs.ErrSessionNotFound
-	}
-
-	s.sessionRepo.Delete(existSession.SessionID())
+	s.sessionRepo.Delete(session.SessionID())
 	s.log.Info("user logout succeeded", withReqID(ctx, "user_id", user.ID, "login", user.Login)...)
-	return nil
 }
 
 func withReqID(ctx context.Context, keysAndValues ...any) []any {

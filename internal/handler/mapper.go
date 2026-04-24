@@ -25,7 +25,6 @@ func reqToRegisterDTO(req *api.RegisterRequest) dto.RegisterInput {
 
 func reqToCreateWalletDTO(req *api.CreateWalletRequest) dto.CreateWalletInput {
 	return dto.CreateWalletInput{
-		UserID:   req.UserId,
 		Currency: string(req.Currency),
 	}
 }

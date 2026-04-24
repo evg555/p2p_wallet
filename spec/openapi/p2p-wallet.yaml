@@ -87,15 +87,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{id}/logout:
+  /users/logout:
     post:
       tags: [Users]
       summary: Выход из системы
       operationId: logoutUser
       security:
         - SessionCookieAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserId'
       responses:
         '204':
           description: No Content
@@ -105,26 +103,8 @@ paths:
               schema:
                 type: string
                 example: session_id=; Path=/; HttpOnly
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Not Found
           content:
             application/json:
               schema:
@@ -169,15 +149,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /wallets/{user_id}:
+  /wallets/me:
     get:
       tags: [Wallets]
       summary: Получение кошельков пользователя
       operationId: listUserWallets
       security:
         - SessionCookieAuth: []
-      parameters:
-        - $ref: '#/components/parameters/WalletUserId'
       responses:
         '200':
           description: OK
@@ -185,12 +163,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListWalletsResponse'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
           content:
@@ -232,6 +204,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Unprocessable Entity
           content:
@@ -249,15 +227,6 @@ components:
   parameters:
     UserId:
       name: id
-      in: path
-      required: true
-      description: ID пользователя
-      schema:
-        type: integer
-        format: int64
-        minimum: 1
-    WalletUserId:
-      name: user_id
       in: path
       required: true
       description: ID пользователя
@@ -371,13 +340,8 @@ components:
     CreateWalletRequest:
       type: object
       required:
-        - user_id
         - currency
       properties:
-        user_id:
-          type: integer
-          format: int64
-          minimum: 1
         currency:
           type: string
           enum: [USD, EUR]

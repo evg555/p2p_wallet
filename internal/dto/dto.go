@@ -12,7 +12,6 @@ type RegisterInput struct {
 }
 
 type CreateWalletInput struct {
-	UserID   int64
 	Currency string
 }
 

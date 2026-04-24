@@ -19,9 +19,9 @@ func (h *handler) TransferBalance(ctx context.Context, req api.TransferBalanceRe
 	if err != nil {
 		var resp api.TransferBalanceResponseObject
 		switch {
-		case errors.Is(err, errs.ErrSessionNotFound) || errors.Is(err, errs.ErrUserNotFound):
-			resp = api.TransferBalance401JSONResponse{
-				Code:    "unauthorized",
+		case errors.Is(err, errs.ErrAccessDenied):
+			resp = api.TransferBalance403JSONResponse{
+				Code:    "forbidden",
 				Message: err.Error(),
 			}
 		case errors.Is(err, errs.ErrWalletNotFound) ||

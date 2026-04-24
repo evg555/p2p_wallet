@@ -6,12 +6,21 @@ import (
 	"time"
 
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/domain/helpers/authctx"
 	"p2p_wallet/internal/shared/requestctx"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
+
+type SessionRepository interface {
+	Get(key domain.SessionID) (*domain.Session, error)
+}
+
+type UserRepository interface {
+	GetByID(ctx context.Context, id domain.UserID) (*domain.User, error)
+}
 
 type statusRecorder struct {
 	http.ResponseWriter
@@ -83,15 +92,40 @@ func AccessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func SessionMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(domain.SessionKey)
-		if err != nil {
-			next.ServeHTTP(w, r)
-			return
-		}
+func AuthMiddleware(log Logger, sessionRepo SessionRepository, userRepo UserRepository) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie(domain.SessionKey)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
 
-		ctx := context.WithValue(r.Context(), domain.CtxKey(domain.SessionKey), cookie.Value)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			session, err := sessionRepo.Get(domain.SessionID(cookie.Value))
+			if err != nil {
+				log.Warn("user unauthorized", "err", err)
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte("session not found"))
+				return
+			}
+
+			if session.ExpiresAt.Before(time.Now()) {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte("session is expired"))
+				return
+			}
+
+			user, err := userRepo.GetByID(r.Context(), session.UserID)
+			if err != nil {
+				log.Warn("user unauthorized", "err", err)
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte("user not found"))
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), authctx.CurrentSessionKey, session)
+			ctx = context.WithValue(ctx, authctx.CurrentUserKey, user)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

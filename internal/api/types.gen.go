@@ -69,7 +69,6 @@ type BalanceTransferResponse struct {
 // CreateWalletRequest defines model for CreateWalletRequest.
 type CreateWalletRequest struct {
 	Currency CreateWalletRequestCurrency `json:"currency"`
-	UserId   int64                       `json:"user_id"`
 }
 
 // CreateWalletRequestCurrency defines model for CreateWalletRequest.Currency.
@@ -186,9 +185,6 @@ type IdempotencyKey = string
 
 // UserId defines model for UserId.
 type UserId = int64
-
-// WalletUserId defines model for WalletUserId.
-type WalletUserId = int64
 
 // TransferBalanceParams defines parameters for TransferBalance.
 type TransferBalanceParams struct {
