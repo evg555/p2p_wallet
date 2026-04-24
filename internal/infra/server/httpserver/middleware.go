@@ -2,9 +2,11 @@ package httpserver
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
+	"p2p_wallet/internal/api"
 	"p2p_wallet/internal/domain"
 	"p2p_wallet/internal/domain/helpers/authctx"
 	"p2p_wallet/internal/shared/requestctx"
@@ -95,31 +97,39 @@ func AccessLogMiddleware(log Logger) func(http.Handler) http.Handler {
 func AuthMiddleware(log Logger, sessionRepo SessionRepository, userRepo UserRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			writeUnauthorized := func(message string) {
+				errResp := api.ErrorResponse{
+					Code:    "unauthorized",
+					Message: message,
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_ = json.NewEncoder(w).Encode(errResp)
+			}
+
 			cookie, err := r.Cookie(domain.SessionKey)
 			if err != nil {
-				next.ServeHTTP(w, r)
+				writeUnauthorized("invalid cookie")
 				return
 			}
 
 			session, err := sessionRepo.Get(domain.SessionID(cookie.Value))
 			if err != nil {
 				log.Warn("user unauthorized", "err", err)
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte("session not found"))
+				writeUnauthorized("session not found")
 				return
 			}
 
 			if session.ExpiresAt.Before(time.Now()) {
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte("session is expired"))
+				writeUnauthorized("session is expired")
 				return
 			}
 
 			user, err := userRepo.GetByID(r.Context(), session.UserID)
 			if err != nil {
 				log.Warn("user unauthorized", "err", err)
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte("user not found"))
+				writeUnauthorized("user not found")
 				return
 			}
 

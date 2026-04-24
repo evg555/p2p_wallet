@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -114,6 +115,20 @@ func buildRouter(
 		Options: openapi3filter.Options{
 			AuthenticationFunc: authenticateRequest,
 		},
+		ErrorHandlerWithOpts: func(_ context.Context, err error, w http.ResponseWriter, _ *http.Request, opts middleware.ErrorHandlerOpts) {
+			var securityErr *openapi3filter.SecurityRequirementsError
+			if errors.As(err, &securityErr) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_ = json.NewEncoder(w).Encode(api.ErrorResponse{
+					Code:    "unauthorized",
+					Message: err.Error(),
+				})
+				return
+			}
+
+			http.Error(w, err.Error(), opts.StatusCode)
+		},
 	})
 
 	metrics := newHTTPMetrics()
@@ -136,7 +151,7 @@ func buildRouter(
 	protectedRouter.Use(AuthMiddleware(log, sessionRepo, userRepo))
 	protectedRouter.Post("/users/logout", handlerWrapper.LogoutUser)
 	protectedRouter.Post("/wallets", handlerWrapper.CreateWallet)
-	protectedRouter.Get("/wallets/me", strictHandler.ListUserWallets)
+	protectedRouter.Get("/wallets/me", handlerWrapper.ListUserWallets)
 	protectedRouter.Post("/balance/transfer", handlerWrapper.TransferBalance)
 
 	apiRouter.Mount("/", publicRouter)
