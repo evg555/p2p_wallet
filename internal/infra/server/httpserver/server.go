@@ -91,24 +91,6 @@ func buildRouter(
 		log.Error("validate openapi", "error", err)
 	}
 
-	metrics := newHTTPMetrics()
-	rootRouter := chi.NewRouter()
-	registerProbeEndpoints(rootRouter, checker)
-
-	apiRouter := chi.NewRouter()
-	apiRouter.Use(RequestIDMiddleware)
-	apiRouter.Use(metrics.Middleware)
-	apiRouter.Use(AccessLogMiddleware(log))
-	apiRouter.Use(AuthMiddleware(log, sessionRepo, userRepo))
-	apiRouter.Method(http.MethodGet, metricPath, metrics.Handler())
-
-	openAPIRouter := chi.NewRouter()
-	openAPIRouter.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
-		Options: openapi3filter.Options{
-			AuthenticationFunc: authenticateRequest,
-		},
-	}))
-
 	strictHandler := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{
 		TracingMiddleware(),
 		ErrorLoggingMiddleware(log),
@@ -121,7 +103,44 @@ func buildRouter(
 		},
 	})
 
-	apiRouter.Mount("/", api.HandlerFromMux(strictHandler, openAPIRouter))
+	handlerWrapper := api.ServerInterfaceWrapper{
+		Handler: strictHandler,
+		ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		},
+	}
+
+	validator := middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+		Options: openapi3filter.Options{
+			AuthenticationFunc: authenticateRequest,
+		},
+	})
+
+	metrics := newHTTPMetrics()
+	rootRouter := chi.NewRouter()
+	registerProbeEndpoints(rootRouter, checker)
+
+	apiRouter := chi.NewRouter()
+	apiRouter.Use(RequestIDMiddleware)
+	apiRouter.Use(metrics.Middleware)
+	apiRouter.Use(AccessLogMiddleware(log))
+	apiRouter.Method(http.MethodGet, metricPath, metrics.Handler())
+
+	publicRouter := chi.NewRouter()
+	publicRouter.Use(validator)
+	publicRouter.Post("/users/login", handlerWrapper.LoginUser)
+	publicRouter.Post("/users/register", handlerWrapper.RegisterUser)
+
+	protectedRouter := chi.NewRouter()
+	protectedRouter.Use(validator)
+	protectedRouter.Use(AuthMiddleware(log, sessionRepo, userRepo))
+	protectedRouter.Post("/users/logout", handlerWrapper.LogoutUser)
+	protectedRouter.Post("/wallets", handlerWrapper.CreateWallet)
+	protectedRouter.Get("/wallets/me", strictHandler.ListUserWallets)
+	protectedRouter.Post("/balance/transfer", handlerWrapper.TransferBalance)
+
+	apiRouter.Mount("/", publicRouter)
+	apiRouter.Mount("/", protectedRouter)
 	rootRouter.Mount("/", apiRouter)
 
 	return otelhttp.NewHandler(
