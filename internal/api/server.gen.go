@@ -394,15 +394,6 @@ func (response TransferBalance401JSONResponse) VisitTransferBalanceResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
-type TransferBalance403JSONResponse ErrorResponse
-
-func (response TransferBalance403JSONResponse) VisitTransferBalanceResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type TransferBalance422JSONResponse ErrorResponse
 
 func (response TransferBalance422JSONResponse) VisitTransferBalanceResponse(w http.ResponseWriter) error {

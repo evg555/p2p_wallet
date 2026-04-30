@@ -9,12 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTransactionStatusString(t *testing.T) {
-	assert.Equal(t, "new", StatusNew.String())
-	assert.Equal(t, "succeed", StatusSucceed.String())
-	assert.Equal(t, "failed", StatusFailed.String())
-}
-
 func TestNewTransaction(t *testing.T) {
 	t.Run("transaction created", func(t *testing.T) {
 		fromWallet := &Wallet{
@@ -35,7 +29,6 @@ func TestNewTransaction(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, transaction)
 		assert.Equal(t, "idemp-1", transaction.IdempotencyKey)
-		assert.Equal(t, StatusNew, transaction.Status)
 		assert.Len(t, transaction.Entries, 2)
 		assert.WithinRange(t, transaction.CreatedAt, startedAt, finishedAt)
 

@@ -34,7 +34,6 @@ func TestTransferBalance_Contract_Ok(t *testing.T) {
 			money := domain.NewMoney(500, domain.CurrencyUSD)
 			return &domain.Transaction{
 				ID:        101,
-				Status:    domain.StatusSucceed,
 				CreatedAt: createdAt,
 				Entries: []domain.Entry{
 					{
@@ -74,7 +73,6 @@ func TestTransferBalance_Contract_Ok(t *testing.T) {
 	var resp api.BalanceTransferResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 	require.Equal(t, int64(101), resp.Transaction.Id)
-	require.Equal(t, api.LedgerTransactionStatus("succeed"), resp.Transaction.Status)
 	require.Equal(t, createdAt, resp.Transaction.CreatedAt)
 	require.Len(t, resp.Transaction.Entries, 2)
 	require.Equal(t, int64(1), resp.Transaction.Entries[0].Id)
@@ -102,31 +100,6 @@ func TestTransferBalance_Contract_BadRequest(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Contains(t, rec.Body.String(), "can't decode JSON body: EOF")
-}
-
-func TestTransferBalance_Contract_Forbidden(t *testing.T) {
-	t.Parallel()
-
-	svc := &balanceServiceMock{
-		transferFn: func(_ context.Context, _ dto.TransferBalanceInput) (*domain.Transaction, error) {
-			return nil, errs.ErrAccessDenied
-		},
-	}
-	server := newTestBalanceServer(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/balance/transfer", strings.NewReader(`{
-		"from_wallet_id":10,
-		"to_wallet_id":20,
-		"amount":500
-	}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Idempotency-Key", "transfer-123")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusForbidden, rec.Code)
-	require.Contains(t, rec.Body.String(), "access denied")
 }
 
 func TestTransferBalance_Contract_UnprocessableEntity(t *testing.T) {

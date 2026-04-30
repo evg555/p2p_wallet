@@ -41,7 +41,7 @@ func (b *balanceService) Transfer(ctx context.Context, input dto.TransferBalance
 	}
 
 	if user.ID != walletFrom.UserID {
-		return nil, fmt.Errorf("transfer wallet failed: wallet %d doesn't belong to user %d: %w", walletFrom.ID, user.ID, errs.ErrAccessDenied)
+		return nil, fmt.Errorf("transfer wallet failed: wallet %d doesn't belong to user %d: %w", walletFrom.ID, user.ID, errs.ErrWalletMismatch)
 	}
 
 	walletTo, err := b.walletRepo.FindByID(ctx, domain.WalletID(input.ToWalletID))
@@ -57,9 +57,9 @@ func (b *balanceService) Transfer(ctx context.Context, input dto.TransferBalance
 		b.log.Warn("transfer wallet failed", withReqID(
 			ctx,
 			"amount", input.Amount,
-			"from_wallet_id", input.ToWalletID,
+			"from_wallet_id", input.FromWalletID,
 			"to_wallet_id", input.ToWalletID,
-			"error", "wallet not found",
+			"error", err.Error(),
 		)...)
 		return nil, fmt.Errorf("transfer wallet failed: %w", err)
 	}
@@ -69,7 +69,7 @@ func (b *balanceService) Transfer(ctx context.Context, input dto.TransferBalance
 		b.log.Warn("transfer wallet failed", withReqID(
 			ctx,
 			"amount", input.Amount,
-			"from_wallet_id", input.ToWalletID,
+			"from_wallet_id", input.FromWalletID,
 			"to_wallet_id", input.ToWalletID,
 			"error", err.Error(),
 		)...)

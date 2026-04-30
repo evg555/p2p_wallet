@@ -8,26 +8,12 @@ import (
 )
 
 const (
-	StatusNew TransactionStatus = iota
-	StatusSucceed
-	StatusFailed
-)
-
-const (
 	TypeTransfer = "transfer"
 )
-
-type TransactionStatus int64
-
-func (t TransactionStatus) String() string {
-	statuses := []string{"new", "succeed", "failed"}
-	return statuses[t]
-}
 
 type Transaction struct {
 	ID             int64
 	IdempotencyKey string
-	Status         TransactionStatus
 	CreatedAt      time.Time
 	Entries        []Entry
 }
@@ -58,7 +44,6 @@ func NewTransaction(idempKey string, amount int64, fromWallet *Wallet, toWallet 
 
 	transaction := &Transaction{
 		IdempotencyKey: idempKey,
-		Status:         StatusNew,
 		Entries:        []Entry{entryFrom, entryTo},
 		CreatedAt:      time.Now(),
 	}

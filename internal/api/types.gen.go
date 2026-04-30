@@ -23,12 +23,6 @@ const (
 	LedgerEntryCurrencyUSD LedgerEntryCurrency = "USD"
 )
 
-// Defines values for LedgerTransactionStatus.
-const (
-	Failed  LedgerTransactionStatus = "failed"
-	Succeed LedgerTransactionStatus = "succeed"
-)
-
 // Defines values for WalletItemCurrency.
 const (
 	WalletItemCurrencyEUR WalletItemCurrency = "EUR"
@@ -94,14 +88,10 @@ type LedgerEntryCurrency string
 
 // LedgerTransaction defines model for LedgerTransaction.
 type LedgerTransaction struct {
-	CreatedAt time.Time               `json:"created_at"`
-	Entries   []LedgerEntry           `json:"entries"`
-	Id        int64                   `json:"id"`
-	Status    LedgerTransactionStatus `json:"status"`
+	CreatedAt time.Time     `json:"created_at"`
+	Entries   []LedgerEntry `json:"entries"`
+	Id        int64         `json:"id"`
 }
-
-// LedgerTransactionStatus defines model for LedgerTransaction.Status.
-type LedgerTransactionStatus string
 
 // ListWalletsResponse defines model for ListWalletsResponse.
 type ListWalletsResponse struct {

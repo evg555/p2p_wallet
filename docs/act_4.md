@@ -24,7 +24,6 @@
 {
   "transaction": {
     "id": 1,
-    "status": "string",
     "entries": [
       {
         "id": 1,
@@ -58,7 +57,6 @@
 |----------------|-----------------------------------------------------------|-------------------------|------------------------------------------|
 | `id`           | `bigint`                                                  | `primary key`           | ID транзакции                            |
 | `type`         | `enum(topup, trasfer, hold, relese, capture, withdrawal)` | `not null`              | тип транзакции                           |
-| `status`       | `enum(new, succeed, failed)`                              | `not null`              | статус транзакции                        |
 | `reference_id` | `varchar(50)`                                             | `null`                  | ссылка на источник (номер заказа и т.д.) |
 | `idemp_key`    | `char(16)\uuid`                                           | `unique,not null`       | uuid ключ идемпотентности                |
 | `created_at`   | `timestamp`                                               | `default current_stamp` | дата создания                            |
@@ -85,7 +83,7 @@
 1. Получение кошельков с балансом (проверка принадлежности пользователю)
 2. Проверка, что валюта перевода совпадает и что на кошельке источнике достаточно средств для перевода
 3. Создание транзакции:
- - LedgerTransaction(id, type[transfer], status, reference_id[null], idemp_key[from header], created_at)
+ - LedgerTransaction(id, type[transfer], reference_id[null], idemp_key[from header], created_at)
  - Создание двух entry
    - Entry(id, transaction_id, from_wallet_id, amount (-), currency, created_at)
    - Entry(id, transaction_id, to_wallet_id, amount (+), currency, created_at)   - 
