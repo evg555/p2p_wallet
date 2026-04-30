@@ -38,10 +38,6 @@ func NewSessionID() SessionID {
 	return SessionID(newUUID.String())
 }
 
-func (s *Session) Equal(sessionID string) bool {
-	return string(s.SessionID()) == sessionID
-}
-
 func (s *Session) IsExpired(t time.Time) bool {
 	return s.ExpiresAt.Before(t)
 }
