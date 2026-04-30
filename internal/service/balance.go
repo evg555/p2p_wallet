@@ -12,17 +12,20 @@ import (
 )
 
 type balanceService struct {
-	log        Logger
-	walletRepo WalletRepo
+	log         Logger
+	walletRepo  WalletRepo
+	balanceRepo BalanceRepo
 }
 
 func NewBalanceService(
 	log Logger,
 	walletRepo WalletRepo,
+	balanceRepo BalanceRepo,
 ) *balanceService {
 	return &balanceService{
-		log:        log,
-		walletRepo: walletRepo,
+		log:         log,
+		walletRepo:  walletRepo,
+		balanceRepo: balanceRepo,
 	}
 }
 
@@ -49,7 +52,7 @@ func (b *balanceService) Transfer(ctx context.Context, input dto.TransferBalance
 		return nil, fmt.Errorf("transfer wallet failed: %w", err)
 	}
 
-	transaction, err := domain.NewTransaction(input.Amount, walletFrom, walletTo)
+	transaction, err := domain.NewTransaction(input.IdempotencyKey, input.Amount, walletFrom, walletTo)
 	if err != nil {
 		b.log.Warn("transfer wallet failed", withReqID(
 			ctx,
@@ -61,7 +64,17 @@ func (b *balanceService) Transfer(ctx context.Context, input dto.TransferBalance
 		return nil, fmt.Errorf("transfer wallet failed: %w", err)
 	}
 
-	// TODO: save transaction
+	transaction, err = b.balanceRepo.CreateTransaction(ctx, transaction)
+	if err != nil {
+		b.log.Warn("transfer wallet failed", withReqID(
+			ctx,
+			"amount", input.Amount,
+			"from_wallet_id", input.ToWalletID,
+			"to_wallet_id", input.ToWalletID,
+			"error", err.Error(),
+		)...)
+		return nil, fmt.Errorf("transfer wallet failed: %w", err)
+	}
 
 	return transaction, nil
 }

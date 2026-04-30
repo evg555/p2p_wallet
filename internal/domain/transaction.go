@@ -13,6 +13,10 @@ const (
 	StatusFailed
 )
 
+const (
+	TypeTransfer = "transfer"
+)
+
 type TransactionStatus int64
 
 func (t TransactionStatus) String() string {
@@ -21,10 +25,11 @@ func (t TransactionStatus) String() string {
 }
 
 type Transaction struct {
-	ID        int64
-	Status    TransactionStatus
-	CreatedAt time.Time
-	Entries   []Entry
+	ID             int64
+	IdempotencyKey string
+	Status         TransactionStatus
+	CreatedAt      time.Time
+	Entries        []Entry
 }
 
 type Entry struct {
@@ -33,7 +38,7 @@ type Entry struct {
 	Money    Money
 }
 
-func NewTransaction(amount int64, fromWallet *Wallet, toWallet *Wallet) (*Transaction, error) {
+func NewTransaction(idempKey string, amount int64, fromWallet *Wallet, toWallet *Wallet) (*Transaction, error) {
 	err := validateTransaction(amount, fromWallet, toWallet)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transaction: %w", err)
@@ -52,9 +57,10 @@ func NewTransaction(amount int64, fromWallet *Wallet, toWallet *Wallet) (*Transa
 	}
 
 	transaction := &Transaction{
-		Status:    StatusNew,
-		Entries:   []Entry{entryFrom, entryTo},
-		CreatedAt: time.Now(),
+		IdempotencyKey: idempKey,
+		Status:         StatusNew,
+		Entries:        []Entry{entryFrom, entryTo},
+		CreatedAt:      time.Now(),
 	}
 
 	return transaction, nil

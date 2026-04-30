@@ -9,7 +9,6 @@ var (
 	ErrPasswordMismatch = errors.New("password mismatch")
 	ErrAccessDenied     = errors.New("access denied")
 	ErrUserAlreadyExist = errors.New("user already exist")
-	ErrSessionNotFound  = errors.New("session not found")
 
 	ErrEmptyField   = errors.New("field is empty")
 	ErrFieldTooMuch = errors.New("field is too much")
@@ -21,6 +20,8 @@ var (
 	ErrNotEnoughMoney    = errors.New("not enough money for transfer")
 	ErrCurrencyMismatch  = errors.New("currencies mismatch within transaction")
 	ErrNotPositiveAmount = errors.New("amount must be positive")
+
+	ErrTransactionAlreadyCreated = errors.New("transaction already created")
 )
 
 type APIError struct {

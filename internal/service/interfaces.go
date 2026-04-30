@@ -11,3 +11,7 @@ type WalletRepo interface {
 	FindByUserID(ctx context.Context, userID domain.UserID) ([]*domain.Wallet, error)
 	FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error)
 }
+
+type BalanceRepo interface {
+	CreateTransaction(ctx context.Context, transaction *domain.Transaction) (*domain.Transaction, error)
+}

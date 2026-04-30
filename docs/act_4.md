@@ -54,27 +54,27 @@
 ## Хранение в БД
 
 ### Таблица `ledger_transactions`
-| поле           | тип                                                       | ограничение       | название                                 |
-|----------------|-----------------------------------------------------------|-------------------|------------------------------------------|
-| `id`           | `bigint`                                                  | `primary key`     | ID транзакции                            |
-| `type`         | `enum(topup, trasfer, hold, relese, capture, withdrawal)` | `not null`        | тип транзакции                           |
-| `status`       | `enum(succeed, failed)`                                   | `not null`        | статус транзакции                        |
-| `reference_id` | `varchar(50)`                                             | `null`            | ссылка на источник (номер заказа и т.д.) |
-| `idemp_key`    | `char(16)\uuid`                                           | `unique,not null` | uuid ключ идемпотентности                |
-| `created_at`   | `timestamp`                                               | `null`            | дата создания                            |
+| поле           | тип                                                       | ограничение             | название                                 |
+|----------------|-----------------------------------------------------------|-------------------------|------------------------------------------|
+| `id`           | `bigint`                                                  | `primary key`           | ID транзакции                            |
+| `type`         | `enum(topup, trasfer, hold, relese, capture, withdrawal)` | `not null`              | тип транзакции                           |
+| `status`       | `enum(new, succeed, failed)`                              | `not null`              | статус транзакции                        |
+| `reference_id` | `varchar(50)`                                             | `null`                  | ссылка на источник (номер заказа и т.д.) |
+| `idemp_key`    | `char(16)\uuid`                                           | `unique,not null`       | uuid ключ идемпотентности                |
+| `created_at`   | `timestamp`                                               | `default current_stamp` | дата создания                            |
 
 - constraint uq_ledger_transactions_idemp_key unique (idemp_key)
 
 
 ### Таблица `ledger_entries`
-| поле             | тип              | ограничение          | название                      |
-|------------------|------------------|----------------------|-------------------------------|
-| `id`             | `bigint`         | `primary key`        | ID записи                     |
-| `transaction_id` | `bigint`         | `not null`           | ID транзакции                 |
-| `wallet_id`      | `bigint`         | `not null`           | ID кошелька                   |
-| `amount`         | `bigint`         | `not null default 0` | сумма перевода/списания с +/- |
-| `currency`       | `enum(USD, EUR)` | `not null`           | валюта                        |
-| `created_at`     | `timestamp`      | `null`               | дата создания                 |
+| поле             | тип              | ограничение             | название                      |
+|------------------|------------------|-------------------------|-------------------------------|
+| `id`             | `bigint`         | `primary key`           | ID записи                     |
+| `transaction_id` | `bigint`         | `not null`              | ID транзакции                 |
+| `wallet_id`      | `bigint`         | `not null`              | ID кошелька                   |
+| `amount`         | `bigint`         | `not null default 0`    | сумма перевода/списания с +/- |
+| `currency`       | `enum(USD, EUR)` | `not null`              | валюта                        |
+| `created_at`     | `timestamp`      | `default current_stamp` | дата создания                 |
 
 - constraint fk_ledger_entries_transaction_id foreign key (transaction_id) references ledger_transactions(id) on delete cascade
 - constraint fk_ledger_entries_wallet_id foreign key (wallet_id) references wallet_balance_snapshots(wallet_id) on delete nothing
