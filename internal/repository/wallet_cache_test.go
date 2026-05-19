@@ -135,7 +135,102 @@ func TestCachedWalletRepoSave(t *testing.T) {
 }
 
 func TestCachedWalletRepoFindByID(t *testing.T) {
-	//TODO: implement me
+	t.Run("cache miss then hit", func(t *testing.T) {
+		next := &stubWalletRepo{
+			findByIDResult: &domain.Wallet{
+				ID:       1,
+				UserID:   42,
+				Currency: domain.CurrencyEUR,
+				Status:   domain.StatusActive,
+			},
+		}
+		repo := &cachedWalletRepo{
+			next:  next,
+			cache: cache.NewCache(10),
+		}
+
+		gotFirst, err := repo.FindByID(context.Background(), domain.WalletID(1))
+		require.NoError(t, err)
+		require.NotNil(t, gotFirst)
+		require.Equal(t, 1, next.findByIDCalls)
+
+		gotSecond, err := repo.FindByID(context.Background(), domain.WalletID(1))
+		require.NoError(t, err)
+		require.Equal(t, gotFirst, gotSecond)
+		require.Equal(t, 1, next.findByIDCalls)
+	})
+
+	t.Run("different ids use different cache keys", func(t *testing.T) {
+		next := &stubWalletRepo{
+			findByIDResults: map[domain.WalletID]*domain.Wallet{
+				1: {ID: 1, UserID: 1, Currency: domain.CurrencyEUR, Status: domain.StatusActive},
+				2: {ID: 2, UserID: 2, Currency: domain.CurrencyUSD, Status: domain.StatusBlocked},
+			},
+		}
+		repo := &cachedWalletRepo{
+			next:  next,
+			cache: cache.NewCache(10),
+		}
+
+		gotFirst, err := repo.FindByID(context.Background(), domain.WalletID(1))
+		require.NoError(t, err)
+		require.NotNil(t, gotFirst)
+
+		gotSecond, err := repo.FindByID(context.Background(), domain.WalletID(2))
+		require.NoError(t, err)
+		require.NotNil(t, gotSecond)
+
+		_, err = repo.FindByID(context.Background(), domain.WalletID(1))
+		require.NoError(t, err)
+
+		require.Equal(t, 2, next.findByIDCalls)
+	})
+
+	t.Run("find error is not cached", func(t *testing.T) {
+		next := &stubWalletRepo{
+			findByIDErr: errors.New("db fail"),
+		}
+		repo := &cachedWalletRepo{
+			next:  next,
+			cache: cache.NewCache(10),
+		}
+
+		got, err := repo.FindByID(context.Background(), domain.WalletID(42))
+		require.Nil(t, got)
+		require.EqualError(t, err, "db fail")
+
+		got, err = repo.FindByID(context.Background(), domain.WalletID(42))
+		require.Nil(t, got)
+		require.EqualError(t, err, "db fail")
+		require.Equal(t, 2, next.findByIDCalls)
+	})
+}
+
+func TestCachedWalletRepoSaveInvalidatesFindByID(t *testing.T) {
+	walletID := domain.WalletID(7)
+	userID := domain.UserID(42)
+	next := &stubWalletRepo{
+		findByIDResults: map[domain.WalletID]*domain.Wallet{
+			walletID: {ID: walletID, UserID: userID, Currency: domain.CurrencyEUR, Status: domain.StatusActive},
+		},
+		saveResult: &domain.Wallet{ID: walletID, UserID: userID, Currency: domain.CurrencyEUR, Status: domain.StatusActive},
+	}
+	repo := &cachedWalletRepo{
+		next:  next,
+		cache: cache.NewCache(10),
+	}
+
+	_, err := repo.FindByID(context.Background(), walletID)
+	require.NoError(t, err)
+	require.Equal(t, 1, next.findByIDCalls)
+
+	_, err = repo.Save(context.Background(), &domain.Wallet{ID: walletID, UserID: userID, Currency: domain.CurrencyEUR})
+	require.NoError(t, err)
+	require.Equal(t, 1, next.saveCalls)
+
+	_, err = repo.FindByID(context.Background(), walletID)
+	require.NoError(t, err)
+	require.Equal(t, 2, next.findByIDCalls)
 }
 
 type stubWalletRepo struct {

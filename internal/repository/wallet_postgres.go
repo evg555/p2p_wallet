@@ -9,6 +9,7 @@ import (
 	"p2p_wallet/internal/errs"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -152,5 +153,58 @@ func (w *walletPostgresRepo) FindByUserID(ctx context.Context, userID domain.Use
 }
 
 func (w *walletPostgresRepo) FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error) {
-	panic("implement me")
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	query, args, err := psql.
+		Select(
+			"w.id",
+			"w.currency",
+			"w.status",
+			"w.user_id",
+			"s.total_amount",
+			"s.held_amount",
+			"w.created_at",
+			"s.updated_at",
+		).
+		From("wallets w").
+		Join("wallet_balance_snapshots s ON s.wallet_id = w.id").
+		Where(sq.Eq{"w.id": id}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build find wallet by id query: %w", err)
+	}
+
+	var (
+		currency string
+		status   string
+		wallet   domain.Wallet
+	)
+
+	err = w.client.QueryRow(ctx, query, args...).Scan(
+		&wallet.ID,
+		&currency,
+		&status,
+		&wallet.UserID,
+		&wallet.TotalAmount,
+		&wallet.HeldAmount,
+		&wallet.CreatedAt,
+		&wallet.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errs.ErrWalletNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find wallet by id: %w", err)
+	}
+
+	wallet.Currency, err = domain.NewCurrency(currency)
+	if err != nil {
+		return nil, fmt.Errorf("parse wallet currency: %w", err)
+	}
+
+	wallet.Status, err = newWalletStatus(status)
+	if err != nil {
+		return nil, fmt.Errorf("parse wallet status: %w", err)
+	}
+
+	return &wallet, nil
 }
