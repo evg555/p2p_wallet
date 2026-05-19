@@ -141,21 +141,20 @@ func buildRouter(
 	apiRouter.Use(AccessLogMiddleware(log))
 	apiRouter.Method(http.MethodGet, metricPath, metrics.Handler())
 
-	publicRouter := chi.NewRouter()
-	publicRouter.Use(validator)
-	publicRouter.Post("/users/login", handlerWrapper.LoginUser)
-	publicRouter.Post("/users/register", handlerWrapper.RegisterUser)
+	apiRouter.Group(func(r chi.Router) {
+		r.Use(validator)
+		r.Post("/users/login", handlerWrapper.LoginUser)
+		r.Post("/users/register", handlerWrapper.RegisterUser)
+	})
 
-	protectedRouter := chi.NewRouter()
-	protectedRouter.Use(validator)
-	protectedRouter.Use(AuthMiddleware(log, sessionRepo, userRepo))
-	protectedRouter.Post("/users/logout", handlerWrapper.LogoutUser)
-	protectedRouter.Post("/wallets", handlerWrapper.CreateWallet)
-	protectedRouter.Get("/wallets/me", handlerWrapper.ListUserWallets)
-	protectedRouter.Post("/balance/transfer", handlerWrapper.TransferBalance)
-
-	apiRouter.Mount("/", publicRouter)
-	apiRouter.Mount("/", protectedRouter)
+	apiRouter.Group(func(r chi.Router) {
+		r.Use(validator)
+		r.Use(AuthMiddleware(log, sessionRepo, userRepo))
+		r.Post("/users/logout", handlerWrapper.LogoutUser)
+		r.Post("/wallets", handlerWrapper.CreateWallet)
+		r.Get("/wallets/me", handlerWrapper.ListUserWallets)
+		r.Post("/balance/transfer", handlerWrapper.TransferBalance)
+	})
 	rootRouter.Mount("/", apiRouter)
 
 	return otelhttp.NewHandler(
