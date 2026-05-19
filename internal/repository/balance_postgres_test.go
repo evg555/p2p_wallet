@@ -127,6 +127,48 @@ func TestBalancePostgresRepoCreateTransaction(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, transactionCount)
 	})
+
+	t.Run("returns existing transaction before balance revalidation on repeated request", func(t *testing.T) {
+		ctx, userRepo := newPostgresRepoForIntegration(t)
+		walletRepo := &walletPostgresRepo{client: userRepo.client}
+		repo := &balancePostgresRepo{client: userRepo.client}
+
+		fromUser := saveUserForWalletTest(t, ctx, userRepo, "balance-repeat-user-from")
+		toUser := saveUserForWalletTest(t, ctx, userRepo, "balance-repeat-user-to")
+		fromWallet := saveWalletForBalanceTest(t, ctx, walletRepo, fromUser.ID, "USD")
+		toWallet := saveWalletForBalanceTest(t, ctx, walletRepo, toUser.ID, "USD")
+
+		setWalletSnapshotAmounts(t, ctx, userRepo, fromWallet.ID, 1000, 0)
+		setWalletSnapshotAmounts(t, ctx, userRepo, toWallet.ID, 100, 0)
+
+		fromWallet.TotalAmount = 1000
+		toWallet.TotalAmount = 100
+
+		firstTx, err := domain.NewTransaction("transfer-idemp-repeat-1", 300, fromWallet, toWallet)
+		require.NoError(t, err)
+
+		firstSaved, err := repo.CreateTransaction(ctx, firstTx)
+		require.NoError(t, err)
+
+		setWalletSnapshotAmounts(t, ctx, userRepo, fromWallet.ID, 0, 0)
+		setWalletSnapshotAmounts(t, ctx, userRepo, toWallet.ID, 9999, 0)
+
+		repeatedTx, err := domain.NewTransaction("transfer-idemp-repeat-1", 300, fromWallet, toWallet)
+		require.NoError(t, err)
+
+		repeatedSaved, err := repo.CreateTransaction(ctx, repeatedTx)
+		require.NoError(t, err)
+		require.NotNil(t, repeatedSaved)
+		require.Equal(t, firstSaved.ID, repeatedSaved.ID)
+		require.Equal(t, firstSaved.IdempotencyKey, repeatedSaved.IdempotencyKey)
+		require.Equal(t, firstSaved.CreatedAt, repeatedSaved.CreatedAt)
+		require.Equal(t, firstSaved.Entries, repeatedSaved.Entries)
+
+		var transactionCount int
+		err = userRepo.client.QueryRow(ctx, "SELECT COUNT(*) FROM ledger_transactions").Scan(&transactionCount)
+		require.NoError(t, err)
+		require.Equal(t, 1, transactionCount)
+	})
 }
 
 func saveWalletForBalanceTest(

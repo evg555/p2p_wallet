@@ -60,7 +60,7 @@ func TestNewTransaction(t *testing.T) {
 		assert.ErrorIs(t, err, errs.ErrNotPositiveAmount)
 	})
 
-	t.Run("not enough available money", func(t *testing.T) {
+	t.Run("does not revalidate available money", func(t *testing.T) {
 		fromWallet := &Wallet{
 			ID:          WalletID(1),
 			Currency:    CurrencyUSD,
@@ -74,9 +74,8 @@ func TestNewTransaction(t *testing.T) {
 
 		transaction, err := NewTransaction("idemp-1", 60, fromWallet, toWallet)
 
-		assert.Nil(t, transaction)
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, errs.ErrNotEnoughMoney)
+		assert.NoError(t, err)
+		assert.NotNil(t, transaction)
 	})
 
 	t.Run("wallet currencies mismatch", func(t *testing.T) {
@@ -115,20 +114,7 @@ func TestValidateWallets(t *testing.T) {
 			Currency: CurrencyEUR,
 		}
 
-		assert.Nil(t, validateWallets(150, fromWallet, toWallet))
-	})
-
-	t.Run("not enough money", func(t *testing.T) {
-		fromWallet := &Wallet{
-			Currency:    CurrencyEUR,
-			TotalAmount: 100,
-			HeldAmount:  1,
-		}
-		toWallet := &Wallet{
-			Currency: CurrencyEUR,
-		}
-
-		assert.ErrorIs(t, validateWallets(100, fromWallet, toWallet), errs.ErrNotEnoughMoney)
+		assert.Nil(t, validateWallets(fromWallet, toWallet))
 	})
 
 	t.Run("currency mismatch", func(t *testing.T) {
@@ -140,6 +126,6 @@ func TestValidateWallets(t *testing.T) {
 			Currency: CurrencyEUR,
 		}
 
-		assert.ErrorIs(t, validateWallets(50, fromWallet, toWallet), errs.ErrCurrencyMismatch)
+		assert.ErrorIs(t, validateWallets(fromWallet, toWallet), errs.ErrCurrencyMismatch)
 	})
 }

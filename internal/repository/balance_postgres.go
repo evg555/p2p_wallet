@@ -27,6 +27,14 @@ func NewBalancePostgresRepo(client *pgxpool.Pool) *balancePostgresRepo {
 }
 
 func (b *balancePostgresRepo) CreateTransaction(ctx context.Context, transaction *domain.Transaction) (*domain.Transaction, error) {
+	existingTransaction, err := b.getTransactionByIdempotencyKey(ctx, transaction.IdempotencyKey)
+	if err == nil {
+		return existingTransaction, nil
+	}
+	if !errors.Is(err, errs.ErrTransactionAlreadyCreated) {
+		return nil, fmt.Errorf("find existing transaction by idempotency key: %w", err)
+	}
+
 	tx, err := b.client.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin balance repo transaction: %w", err)

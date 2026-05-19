@@ -57,13 +57,14 @@ func validateTransaction(amount int64, fromWallet *Wallet, toWallet *Wallet) err
 		return err
 	}
 
-	err = validateWallets(amount, fromWallet, toWallet)
+	err = validateWallets(fromWallet, toWallet)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
 func validateAmount(amount int64) error {
 	if amount <= 0 {
 		return errs.ErrNotPositiveAmount
@@ -71,11 +72,7 @@ func validateAmount(amount int64) error {
 	return nil
 }
 
-func validateWallets(amount int64, fromWallet *Wallet, toWallet *Wallet) error {
-	if fromWallet.TotalAmount-fromWallet.HeldAmount < amount {
-		return errs.ErrNotEnoughMoney
-	}
-
+func validateWallets(fromWallet *Wallet, toWallet *Wallet) error {
 	if fromWallet.Currency != toWallet.Currency {
 		return errs.ErrCurrencyMismatch
 	}
