@@ -15,17 +15,10 @@ import (
 type AuthService interface {
 	Register(ctx context.Context, input dto.RegisterInput) (*domain.User, error)
 	Login(ctx context.Context, input dto.LoginInput) (*domain.AuthResult, error)
-	Logout(ctx context.Context, id int64) error
+	Logout(ctx context.Context)
 }
 
 func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject) (api.LoginUserResponseObject, error) {
-	if req.Body == nil {
-		return api.LoginUser400JSONResponse{
-			Code:    "bad request",
-			Message: "request body is required",
-		}, nil
-	}
-
 	res, err := h.userSrv.Login(ctx, reqToLoginDTO(req.Body))
 	if err != nil {
 		var resp api.LoginUserResponseObject
@@ -70,13 +63,6 @@ func (h *handler) LoginUser(ctx context.Context, req api.LoginUserRequestObject)
 }
 
 func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestObject) (api.RegisterUserResponseObject, error) {
-	if req.Body == nil {
-		return api.RegisterUser400JSONResponse{
-			Code:    "bad request",
-			Message: "request body is required",
-		}, nil
-	}
-
 	user, err := h.userSrv.Register(ctx, reqToRegisterDTO(req.Body))
 	if err != nil {
 		var resp api.RegisterUserResponseObject
@@ -104,32 +90,8 @@ func (h *handler) RegisterUser(ctx context.Context, req api.RegisterUserRequestO
 	return resp, nil
 }
 
-func (h *handler) LogoutUser(ctx context.Context, req api.LogoutUserRequestObject) (api.LogoutUserResponseObject, error) {
-	err := h.userSrv.Logout(ctx, req.Id)
-	if err != nil {
-		var resp api.LogoutUserResponseObject
-		switch true {
-		case errors.Is(err, errs.ErrUserNotFound):
-			resp = api.LogoutUser404JSONResponse{
-				Code:    "not found",
-				Message: err.Error(),
-			}
-		case errors.Is(err, errs.ErrSessionNotFound):
-			resp = api.LogoutUser401JSONResponse{
-				Code:    "unauthorized",
-				Message: err.Error(),
-			}
-		case errors.Is(err, errs.ErrAccessDenied):
-			resp = api.LogoutUser403JSONResponse{
-				Code:    "access denied",
-				Message: err.Error(),
-			}
-		default:
-			return nil, err
-		}
-
-		return resp, nil
-	}
+func (h *handler) LogoutUser(ctx context.Context, _ api.LogoutUserRequestObject) (api.LogoutUserResponseObject, error) {
+	h.userSrv.Logout(ctx)
 
 	resp := api.LogoutUser204Response{
 		Headers: api.LogoutUser204ResponseHeaders{

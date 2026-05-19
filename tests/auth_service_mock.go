@@ -10,7 +10,7 @@ import (
 type authServiceMock struct {
 	registerFn func(ctx context.Context, input dto.RegisterInput) (*domain.User, error)
 	loginFn    func(ctx context.Context, input dto.LoginInput) (*domain.AuthResult, error)
-	logoutFn   func(ctx context.Context, id int64) error
+	logoutFn   func(ctx context.Context)
 }
 
 func (m *authServiceMock) Register(ctx context.Context, input dto.RegisterInput) (*domain.User, error) {
@@ -21,6 +21,6 @@ func (m *authServiceMock) Login(ctx context.Context, input dto.LoginInput) (*dom
 	return m.loginFn(ctx, input)
 }
 
-func (m *authServiceMock) Logout(ctx context.Context, id int64) error {
-	return m.logoutFn(ctx, id)
+func (m *authServiceMock) Logout(ctx context.Context) {
+	m.logoutFn(ctx)
 }

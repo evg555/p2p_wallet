@@ -91,6 +91,42 @@ func TestWalletPostgresRepoFindByUserID(t *testing.T) {
 	})
 }
 
+func TestWalletPostgresRepoFindByID(t *testing.T) {
+	t.Run("wallet exists", func(t *testing.T) {
+		ctx, userRepo := newPostgresRepoForIntegration(t)
+		repo := &walletPostgresRepo{client: userRepo.client}
+
+		user := saveUserForWalletTest(t, ctx, userRepo, "wallet-find-by-id-user")
+
+		input, err := domain.NewWallet(user.ID, "USD")
+		require.NoError(t, err)
+
+		saved, err := repo.Save(ctx, input)
+		require.NoError(t, err)
+
+		got, err := repo.FindByID(ctx, saved.ID)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Equal(t, saved.ID, got.ID)
+		require.Equal(t, saved.Currency, got.Currency)
+		require.Equal(t, saved.Status, got.Status)
+		require.Equal(t, saved.UserID, got.UserID)
+		require.Zero(t, got.TotalAmount)
+		require.Zero(t, got.HeldAmount)
+		require.False(t, got.CreatedAt.IsZero())
+		require.NotNil(t, got.UpdatedAt)
+	})
+
+	t.Run("wallet does not exist", func(t *testing.T) {
+		ctx, userRepo := newPostgresRepoForIntegration(t)
+		repo := &walletPostgresRepo{client: userRepo.client}
+
+		got, err := repo.FindByID(ctx, domain.WalletID(9999999999))
+		require.ErrorIs(t, err, errs.ErrWalletNotFound)
+		require.Nil(t, got)
+	})
+}
+
 func saveUserForWalletTest(
 	t *testing.T,
 	ctx context.Context,

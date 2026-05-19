@@ -104,12 +104,12 @@ tasks:
     deps:
       - build
     cmds:
-      - ./bin/auth
+      - ./bin/p2p_wallet
 
   build:
     desc: Build application
     cmds:
-      - go build -o ./bin/auth cmd/auth/main.go
+      - go build -o ./bin/p2p_wallet cmd/p2p_wallet/main.go
 
 
   docker-run:
@@ -141,4 +141,4 @@ tasks:
         set -a
         . ./.env
         set +a
-        ./bin/goose -dir ./migration/auth postgres "host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASS} dbname=${DB_DATABASE} sslmode=${DB_SSLMODE}" down
+        ./bin/goose -dir ./migration postgres "host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASS} dbname=${DB_DATABASE} sslmode=${DB_SSLMODE}" down

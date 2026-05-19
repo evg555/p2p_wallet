@@ -25,7 +25,15 @@ func reqToRegisterDTO(req *api.RegisterRequest) dto.RegisterInput {
 
 func reqToCreateWalletDTO(req *api.CreateWalletRequest) dto.CreateWalletInput {
 	return dto.CreateWalletInput{
-		UserID:   req.UserId,
 		Currency: string(req.Currency),
+	}
+}
+
+func reqToTransferBalanceDTO(params api.TransferBalanceParams, req *api.BalanceTransferRequest) dto.TransferBalanceInput {
+	return dto.TransferBalanceInput{
+		IdempotencyKey: params.XIdempotencyKey,
+		FromWalletID:   req.FromWalletId,
+		ToWalletID:     req.ToWalletId,
+		Amount:         req.Amount,
 	}
 }

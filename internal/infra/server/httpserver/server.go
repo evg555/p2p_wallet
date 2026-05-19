@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -33,8 +34,15 @@ type readinessChecker interface {
 	Ping(ctx context.Context) error
 }
 
-func NewServer(cfg config.ServerConfig, log Logger, h api.StrictServerInterface, checker readinessChecker) *server {
-	router := buildRouter(log, h, checker)
+func NewServer(
+	cfg config.ServerConfig,
+	log Logger,
+	h api.StrictServerInterface,
+	checker readinessChecker,
+	sessionRepo SessionRepository,
+	userRepo UserRepository,
+) *server {
+	router := buildRouter(log, h, checker, sessionRepo, userRepo)
 	addr := buildAddress(cfg)
 
 	srv := &http.Server{
@@ -68,7 +76,13 @@ func (s *server) Close(ctx context.Context) {
 	s.log.Info("http server stopped")
 }
 
-func buildRouter(log Logger, h api.StrictServerInterface, checker readinessChecker) http.Handler {
+func buildRouter(
+	log Logger,
+	h api.StrictServerInterface,
+	checker readinessChecker,
+	sessionRepo SessionRepository,
+	userRepo UserRepository,
+) http.Handler {
 	loader := openapi3.NewLoader()
 	swagger, err := loader.LoadFromFile("spec/openapi/p2p-wallet.yaml")
 	if err != nil {
@@ -77,24 +91,6 @@ func buildRouter(log Logger, h api.StrictServerInterface, checker readinessCheck
 	if err = swagger.Validate(context.Background()); err != nil {
 		log.Error("validate openapi", "error", err)
 	}
-
-	metrics := newHTTPMetrics()
-	rootRouter := chi.NewRouter()
-	registerProbeEndpoints(rootRouter, checker)
-
-	apiRouter := chi.NewRouter()
-	apiRouter.Use(RequestIDMiddleware)
-	apiRouter.Use(metrics.Middleware)
-	apiRouter.Use(AccessLogMiddleware(log))
-	apiRouter.Use(SessionMiddleware)
-	apiRouter.Method(http.MethodGet, metricPath, metrics.Handler())
-
-	openAPIRouter := chi.NewRouter()
-	openAPIRouter.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
-		Options: openapi3filter.Options{
-			AuthenticationFunc: authenticateRequest,
-		},
-	}))
 
 	strictHandler := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{
 		TracingMiddleware(),
@@ -108,7 +104,57 @@ func buildRouter(log Logger, h api.StrictServerInterface, checker readinessCheck
 		},
 	})
 
-	apiRouter.Mount("/", api.HandlerFromMux(strictHandler, openAPIRouter))
+	handlerWrapper := api.ServerInterfaceWrapper{
+		Handler: strictHandler,
+		ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		},
+	}
+
+	validator := middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+		Options: openapi3filter.Options{
+			AuthenticationFunc: authenticateRequest,
+		},
+		ErrorHandlerWithOpts: func(_ context.Context, err error, w http.ResponseWriter, _ *http.Request, opts middleware.ErrorHandlerOpts) {
+			var securityErr *openapi3filter.SecurityRequirementsError
+			if errors.As(err, &securityErr) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_ = json.NewEncoder(w).Encode(api.ErrorResponse{
+					Code:    "unauthorized",
+					Message: err.Error(),
+				})
+				return
+			}
+
+			http.Error(w, err.Error(), opts.StatusCode)
+		},
+	})
+
+	metrics := newHTTPMetrics()
+	rootRouter := chi.NewRouter()
+	registerProbeEndpoints(rootRouter, checker)
+
+	apiRouter := chi.NewRouter()
+	apiRouter.Use(RequestIDMiddleware)
+	apiRouter.Use(metrics.Middleware)
+	apiRouter.Use(AccessLogMiddleware(log))
+	apiRouter.Method(http.MethodGet, metricPath, metrics.Handler())
+
+	apiRouter.Group(func(r chi.Router) {
+		r.Use(validator)
+		r.Post("/users/login", handlerWrapper.LoginUser)
+		r.Post("/users/register", handlerWrapper.RegisterUser)
+	})
+
+	apiRouter.Group(func(r chi.Router) {
+		r.Use(validator)
+		r.Use(AuthMiddleware(log, sessionRepo, userRepo))
+		r.Post("/users/logout", handlerWrapper.LogoutUser)
+		r.Post("/wallets", handlerWrapper.CreateWallet)
+		r.Get("/wallets/me", handlerWrapper.ListUserWallets)
+		r.Post("/balance/transfer", handlerWrapper.TransferBalance)
+	})
 	rootRouter.Mount("/", apiRouter)
 
 	return otelhttp.NewHandler(

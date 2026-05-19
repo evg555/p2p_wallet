@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"p2p_wallet/internal/domain"
+	"p2p_wallet/internal/domain/helpers/authctx"
 	"p2p_wallet/internal/dto"
 	"p2p_wallet/internal/errs"
 	"p2p_wallet/internal/service/mocks"
@@ -139,77 +140,27 @@ func TestLogin(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
-	t.Run("session not found on get error", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := &testLogger{}
-		svc := NewAuthService(logger, userRepo, sessionRepo)
-
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(nil, errors.New("cache fail"))
-
-		err := svc.Logout(ctx, 1)
-		assert.ErrorIs(t, err, errs.ErrSessionNotFound)
-	})
-
-	t.Run("access denied when session id is missing in context", func(t *testing.T) {
+	t.Run("session is empty", func(t *testing.T) {
 		ctx := context.Background()
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
 		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
+		sessionRepo.EXPECT().Delete(domain.SessionID("")).Return().Once()
 
-		err := svc.Logout(ctx, 1)
-		assert.ErrorIs(t, err, errs.ErrAccessDenied)
-	})
-
-	t.Run("user repo error", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := &testLogger{}
-		svc := NewAuthService(logger, userRepo, sessionRepo)
-
-		repoErr := errors.New("db fail")
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, repoErr)
-
-		err := svc.Logout(ctx, 1)
-		assert.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "failed to get user by id"))
-		assert.ErrorIs(t, err, repoErr)
-	})
-
-	t.Run("user not found", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
-		userRepo := mocks.NewMockUserRepo(t)
-		sessionRepo := mocks.NewMockSessionRepo(t)
-		logger := &testLogger{}
-		svc := NewAuthService(logger, userRepo, sessionRepo)
-
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(nil, errs.ErrUserNotFound)
-
-		err := svc.Logout(ctx, 1)
-		assert.ErrorIs(t, err, errs.ErrUserNotFound)
+		svc.Logout(ctx)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), domain.CtxKey(domain.SessionKey), "sid")
+		ctx := context.WithValue(context.Background(), authctx.CurrentSessionKey, domain.Session{ID: "sid"})
 		userRepo := mocks.NewMockUserRepo(t)
 		sessionRepo := mocks.NewMockSessionRepo(t)
 		logger := &testLogger{}
 		svc := NewAuthService(logger, userRepo, sessionRepo)
 
-		sessionRepo.EXPECT().Get(domain.SessionID("sid")).Return(&domain.Session{
-			ID:     domain.SessionID("sid"),
-			UserID: domain.UserID(1),
-		}, nil)
-		userRepo.EXPECT().GetByID(ctx, int64(1)).Return(&domain.User{ID: 1}, nil)
-		sessionRepo.EXPECT().Delete(domain.SessionID("sid")).Return()
+		sessionRepo.EXPECT().Delete(domain.SessionID("sid")).Return().Once()
 
-		err := svc.Logout(ctx, 1)
-		assert.NoError(t, err)
+		svc.Logout(ctx)
 	})
 }

@@ -85,7 +85,7 @@ func (r *userPostgresRepo) GetByLogin(ctx context.Context, login string) (*domai
 	return user, nil
 }
 
-func (r *userPostgresRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
+func (r *userPostgresRepo) GetByID(ctx context.Context, id domain.UserID) (*domain.User, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	query, args, err := psql.Select("id", "name", "last_name", "login", "password", "created_at", "updated_at").
 		From("users").

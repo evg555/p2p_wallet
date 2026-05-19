@@ -40,3 +40,13 @@ func (m *metricsWalletRepo) FindByUserID(ctx context.Context, userID domain.User
 
 	return res, err
 }
+
+func (m *metricsWalletRepo) FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error) {
+	const op = "wallet.find_by_id"
+
+	start := time.Now()
+	res, err := m.next.FindByID(ctx, id)
+	observeDB(op, start, err)
+
+	return res, err
+}

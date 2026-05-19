@@ -15,13 +15,13 @@ type Session struct {
 }
 
 func NewSession(userID UserID, ttl time.Duration) *Session {
-	now := time.Now()
+	now := time.Now().UTC()
 
 	return &Session{
 		ID:        NewSessionID(),
 		UserID:    userID,
 		CreatedAt: now,
-		ExpiresAt: time.Now().Add(ttl),
+		ExpiresAt: now.Add(ttl),
 	}
 }
 
@@ -38,6 +38,6 @@ func NewSessionID() SessionID {
 	return SessionID(newUUID.String())
 }
 
-func (s *Session) Equal(sessionID string) bool {
-	return string(s.SessionID()) == sessionID
+func (s *Session) IsExpired(t time.Time) bool {
+	return s.ExpiresAt.Before(t)
 }

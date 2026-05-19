@@ -17,6 +17,12 @@ const (
 	CreateWalletRequestCurrencyUSD CreateWalletRequestCurrency = "USD"
 )
 
+// Defines values for LedgerEntryCurrency.
+const (
+	LedgerEntryCurrencyEUR LedgerEntryCurrency = "EUR"
+	LedgerEntryCurrencyUSD LedgerEntryCurrency = "USD"
+)
+
 // Defines values for WalletItemCurrency.
 const (
 	WalletItemCurrencyEUR WalletItemCurrency = "EUR"
@@ -31,8 +37,8 @@ const (
 
 // Defines values for WalletResponseCurrency.
 const (
-	EUR WalletResponseCurrency = "EUR"
-	USD WalletResponseCurrency = "USD"
+	WalletResponseCurrencyEUR WalletResponseCurrency = "EUR"
+	WalletResponseCurrencyUSD WalletResponseCurrency = "USD"
 )
 
 // Defines values for WalletResponseStatus.
@@ -41,10 +47,22 @@ const (
 	WalletResponseStatusBlocked WalletResponseStatus = "blocked"
 )
 
+// BalanceTransferRequest defines model for BalanceTransferRequest.
+type BalanceTransferRequest struct {
+	// Amount Сумма перевода в минорах
+	Amount       int64 `json:"amount"`
+	FromWalletId int64 `json:"from_wallet_id"`
+	ToWalletId   int64 `json:"to_wallet_id"`
+}
+
+// BalanceTransferResponse defines model for BalanceTransferResponse.
+type BalanceTransferResponse struct {
+	Transaction LedgerTransaction `json:"transaction"`
+}
+
 // CreateWalletRequest defines model for CreateWalletRequest.
 type CreateWalletRequest struct {
 	Currency CreateWalletRequestCurrency `json:"currency"`
-	UserId   int64                       `json:"user_id"`
 }
 
 // CreateWalletRequestCurrency defines model for CreateWalletRequest.Currency.
@@ -54,6 +72,25 @@ type CreateWalletRequestCurrency string
 type ErrorResponse struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+// LedgerEntry defines model for LedgerEntry.
+type LedgerEntry struct {
+	// Amount Изменение баланса кошелька в минорах, отрицательное для списания и положительное для зачисления
+	Amount   int64               `json:"amount"`
+	Currency LedgerEntryCurrency `json:"currency"`
+	Id       int64               `json:"id"`
+	WalletId int64               `json:"wallet_id"`
+}
+
+// LedgerEntryCurrency defines model for LedgerEntry.Currency.
+type LedgerEntryCurrency string
+
+// LedgerTransaction defines model for LedgerTransaction.
+type LedgerTransaction struct {
+	CreatedAt time.Time     `json:"created_at"`
+	Entries   []LedgerEntry `json:"entries"`
+	Id        int64         `json:"id"`
 }
 
 // ListWalletsResponse defines model for ListWalletsResponse.
@@ -133,11 +170,20 @@ type WalletResponseCurrency string
 // WalletResponseStatus defines model for WalletResponse.Status.
 type WalletResponseStatus string
 
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
+
 // UserId defines model for UserId.
 type UserId = int64
 
-// WalletUserId defines model for WalletUserId.
-type WalletUserId = int64
+// TransferBalanceParams defines parameters for TransferBalance.
+type TransferBalanceParams struct {
+	// XIdempotencyKey Ключ идемпотентности операции перевода
+	XIdempotencyKey IdempotencyKey `json:"X-Idempotency-Key"`
+}
+
+// TransferBalanceJSONRequestBody defines body for TransferBalance for application/json ContentType.
+type TransferBalanceJSONRequestBody = BalanceTransferRequest
 
 // LoginUserJSONRequestBody defines body for LoginUser for application/json ContentType.
 type LoginUserJSONRequestBody = LoginRequest

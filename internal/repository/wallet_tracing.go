@@ -58,3 +58,21 @@ func (r *tracingWalletRepo) FindByUserID(ctx context.Context, userID domain.User
 
 	return res, err
 }
+
+func (r *tracingWalletRepo) FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error) {
+	ctx, span := r.tracer.Start(ctx, "repo.wallet.find_by_id", trace.WithSpanKind(trace.SpanKindClient))
+	span.SetAttributes(
+		attribute.String("db.system", "postgresql"),
+		attribute.String("db.operation", "SELECT"),
+		attribute.String("repo.method", "FindByID"),
+	)
+
+	res, err := r.next.FindByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, errorClass(err))
+	}
+	span.End()
+
+	return res, err
+}

@@ -268,111 +268,22 @@ func TestLoginUser_Contract_InternalServerError(t *testing.T) {
 func TestLogoutUser_Contract_No_Content(t *testing.T) {
 	t.Parallel()
 
-	var gotID *int64
-
 	svc := &authServiceMock{
-		logoutFn: func(_ context.Context, id int64) error {
-			gotID = &id
-			return nil
-		},
+		logoutFn: func(_ context.Context) {},
 	}
 	server := newTestServer(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/users/1/logout", nil)
+	req := httptest.NewRequest(http.MethodPost, "/users/logout", nil)
 	req.Header.Set("Content-Type", "application/json")
 
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusNoContent, rec.Code)
-	require.Equal(t, int64(1), *gotID)
-}
-
-func TestLogoutUser_Contract_Unauthorized(t *testing.T) {
-	t.Parallel()
-
-	svc := &authServiceMock{
-		logoutFn: func(_ context.Context, id int64) error {
-			return errs.ErrSessionNotFound
-		},
-	}
-	server := newTestServer(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/users/1/logout", nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusUnauthorized, rec.Code)
-	require.Contains(t, rec.Body.String(), "session not found")
-}
-
-func TestLogoutUser_Contract_Not_Found(t *testing.T) {
-	t.Parallel()
-
-	svc := &authServiceMock{
-		logoutFn: func(_ context.Context, id int64) error {
-			return errs.ErrUserNotFound
-		},
-	}
-	server := newTestServer(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/users/1/logout", nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusNotFound, rec.Code)
-	require.Contains(t, rec.Body.String(), "user not found")
-}
-
-func TestLogoutUser_Contract_Forbidden(t *testing.T) {
-	t.Parallel()
-
-	svc := &authServiceMock{
-		logoutFn: func(_ context.Context, id int64) error {
-			return errs.ErrAccessDenied
-		},
-	}
-	server := newTestServer(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/users/1/logout", nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusForbidden, rec.Code)
-	require.Contains(t, rec.Body.String(), "access denied")
-}
-
-func TestLogoutUser_Contract_InternalServerError(t *testing.T) {
-	t.Parallel()
-
-	svc := &authServiceMock{
-		logoutFn: func(_ context.Context, id int64) error {
-			return errors.New("database unavailable")
-		},
-	}
-	server := newTestServer(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/users/1/logout", nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	resp, err := io.ReadAll(rec.Body)
-	require.NoError(t, err)
-
-	require.Equal(t, http.StatusInternalServerError, rec.Code)
-	require.Equal(t, "internal server error\n", string(resp))
 }
 
 func newTestServer(svc handler.AuthService) http.Handler {
-	h := handler.New(svc, nil)
+	h := handler.New(svc, nil, nil)
 	return api.Handler(api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)

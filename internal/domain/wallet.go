@@ -9,19 +9,11 @@ import (
 
 type WalletID int64
 
-type Currency int
+type WalletStatus int64
 
-func (c Currency) String() string {
-	currencies := []string{"EUR", "USD"}
-	return currencies[c]
+func (w WalletID) Int64() int64 {
+	return int64(w)
 }
-
-const (
-	CurrencyEUR Currency = iota
-	CurrencyUSD
-)
-
-type WalletStatus int
 
 func (s WalletStatus) String() string {
 	statuses := []string{"active", "blocked"}
@@ -54,7 +46,7 @@ func NewWallet(userID UserID, currency string) (*Wallet, error) {
 		UserID:    userID,
 		Currency:  newCurrency,
 		Status:    StatusActive,
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 	}, nil
 }
 

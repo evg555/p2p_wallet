@@ -53,14 +53,13 @@ func TestCreateWallet_Contract_Created(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, rec.Code)
 	require.True(t, gotInputSet)
-	require.Equal(t, int64(10), gotInput.UserID)
 	require.Equal(t, "USD", gotInput.Currency)
 
 	var resp api.WalletResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 	require.Equal(t, int64(1), resp.Id)
 	require.Equal(t, int64(10), resp.UserId)
-	require.Equal(t, api.USD, resp.Currency)
+	require.Equal(t, api.WalletResponseCurrencyUSD, resp.Currency)
 	require.Equal(t, api.WalletResponseStatusActive, resp.Status)
 	require.Equal(t, createdAt, resp.CreatedAt)
 }
@@ -104,29 +103,6 @@ func TestCreateWallet_Contract_Bad_Request(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-func TestCreateWallet_Contract_Unauthorized(t *testing.T) {
-	t.Parallel()
-
-	svc := &walletServiceMock{
-		createWalletFn: func(_ context.Context, _ dto.CreateWalletInput) (*domain.Wallet, error) {
-			return nil, errs.ErrSessionNotFound
-		},
-	}
-	server := newTestWalletServer(svc)
-
-	req := httptest.NewRequest(http.MethodPost, "/wallets", strings.NewReader(`{
-		"user_id":10,
-		"currency":"USD"
-	}`))
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusUnauthorized, rec.Code)
-	require.Contains(t, rec.Body.String(), "session not found")
-}
-
 func TestCreateWallet_Contract_InternalServerError(t *testing.T) {
 	t.Parallel()
 
@@ -158,15 +134,13 @@ func TestListUserWallets_Contract_Ok(t *testing.T) {
 
 	createdAt := time.Date(2026, time.March, 6, 10, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2026, time.March, 6, 11, 0, 0, 0, time.UTC)
-	var gotUserID *int64
 
 	svc := &walletServiceMock{
-		listWalletsFn: func(_ context.Context, userID int64) ([]*domain.Wallet, error) {
-			gotUserID = &userID
+		listWalletsFn: func(_ context.Context) ([]*domain.Wallet, error) {
 			return []*domain.Wallet{
 				{
 					ID:          1,
-					UserID:      domain.UserID(userID),
+					UserID:      1,
 					Currency:    domain.CurrencyUSD,
 					Status:      domain.StatusActive,
 					TotalAmount: 10010,
@@ -179,15 +153,13 @@ func TestListUserWallets_Contract_Ok(t *testing.T) {
 	}
 	server := newTestWalletServer(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/wallets/10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/wallets/me", nil)
 	req.Header.Set("Content-Type", "application/json")
 
 	rec := httptest.NewRecorder()
 	server.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.NotNil(t, gotUserID)
-	require.Equal(t, int64(10), *gotUserID)
 
 	var resp api.ListWalletsResponse
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
@@ -201,37 +173,17 @@ func TestListUserWallets_Contract_Ok(t *testing.T) {
 	require.Equal(t, updatedAt, resp.Wallets[0].UpdatedAt)
 }
 
-func TestListUserWallets_Contract_Unauthorized(t *testing.T) {
-	t.Parallel()
-
-	svc := &walletServiceMock{
-		listWalletsFn: func(_ context.Context, _ int64) ([]*domain.Wallet, error) {
-			return nil, errs.ErrSessionNotFound
-		},
-	}
-	server := newTestWalletServer(svc)
-
-	req := httptest.NewRequest(http.MethodGet, "/wallets/10", nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	server.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusUnauthorized, rec.Code)
-	require.Contains(t, rec.Body.String(), "session not found")
-}
-
 func TestListUserWallets_Contract_InternalServerError(t *testing.T) {
 	t.Parallel()
 
 	svc := &walletServiceMock{
-		listWalletsFn: func(_ context.Context, _ int64) ([]*domain.Wallet, error) {
+		listWalletsFn: func(_ context.Context) ([]*domain.Wallet, error) {
 			return nil, errors.New("database unavailable")
 		},
 	}
 	server := newTestWalletServer(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/wallets/10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/wallets/me", nil)
 	req.Header.Set("Content-Type", "application/json")
 
 	rec := httptest.NewRecorder()
@@ -245,7 +197,7 @@ func TestListUserWallets_Contract_InternalServerError(t *testing.T) {
 }
 
 func newTestWalletServer(svc handler.WalletService) http.Handler {
-	h := handler.New(nil, svc)
+	h := handler.New(nil, svc, nil)
 	return api.Handler(api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)

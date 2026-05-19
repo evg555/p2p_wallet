@@ -13,6 +13,10 @@ var maxFieldLength = 50
 
 type UserID int64
 
+func (u UserID) Int64() int64 {
+	return int64(u)
+}
+
 type User struct {
 	ID        UserID
 	Login     string
@@ -24,7 +28,7 @@ type User struct {
 }
 
 func NewUser(login, password, firstName, lastName string) (*User, error) {
-	if err := validate(login, password, firstName, lastName); err != nil {
+	if err := validateUser(login, password, firstName, lastName); err != nil {
 		return nil, fmt.Errorf("user: %w", err)
 	}
 
@@ -32,7 +36,7 @@ func NewUser(login, password, firstName, lastName string) (*User, error) {
 		Login:     login,
 		FirstName: firstName,
 		LastName:  lastName,
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 	}
 
 	hash, err := encodePassword(password)
@@ -57,7 +61,7 @@ func encodePassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func validate(login, password, firstName, lastName string) error {
+func validateUser(login, password, firstName, lastName string) error {
 	err := validateLogin(login)
 	if err != nil {
 		return err

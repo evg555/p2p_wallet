@@ -9,6 +9,8 @@ tags:
     description: Операции с пользователями
   - name: Wallets
     description: Операции с кошельками
+  - name: Balances
+    description: Операции с балансами
 
 paths:
   /users/register:
@@ -85,15 +87,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{id}/logout:
+  /users/logout:
     post:
       tags: [Users]
       summary: Выход из системы
       operationId: logoutUser
       security:
         - SessionCookieAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserId'
       responses:
         '204':
           description: No Content
@@ -103,26 +103,8 @@ paths:
               schema:
                 type: string
                 example: session_id=; Path=/; HttpOnly
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Not Found
           content:
             application/json:
               schema:
@@ -167,15 +149,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /wallets/{user_id}:
+  /wallets/me:
     get:
       tags: [Wallets]
       summary: Получение кошельков пользователя
       operationId: listUserWallets
       security:
         - SessionCookieAuth: []
-      parameters:
-        - $ref: '#/components/parameters/WalletUserId'
       responses:
         '200':
           description: OK
@@ -183,14 +163,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListWalletsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /balance/transfer:
+    post:
+      tags: [Balances]
+      summary: Перевод средств между балансами кошельков
+      operationId: transferBalance
+      security:
+        - SessionCookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BalanceTransferRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceTransferResponse'
         '400':
-          description: Bad request
+          description: Bad Request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity
           content:
             application/json:
               schema:
@@ -213,15 +228,15 @@ components:
         type: integer
         format: int64
         minimum: 1
-    WalletUserId:
-      name: user_id
-      in: path
+    IdempotencyKey:
+      name: X-Idempotency-Key
+      in: header
       required: true
-      description: ID пользователя
+      description: Ключ идемпотентности операции перевода
       schema:
-        type: integer
-        format: int64
-        minimum: 1
+        type: string
+        minLength: 1
+        maxLength: 64
 
   schemas:
     RegisterRequest:
@@ -319,13 +334,8 @@ components:
     CreateWalletRequest:
       type: object
       required:
-        - user_id
         - currency
       properties:
-        user_id:
-          type: integer
-          format: int64
-          minimum: 1
         currency:
           type: string
           enum: [USD, EUR]
@@ -401,3 +411,74 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WalletItem'
+
+    BalanceTransferRequest:
+      type: object
+      required:
+        - from_wallet_id
+        - to_wallet_id
+        - amount
+      properties:
+        from_wallet_id:
+          type: integer
+          format: int64
+          minimum: 1
+        to_wallet_id:
+          type: integer
+          format: int64
+          minimum: 1
+        amount:
+          type: integer
+          format: int64
+          description: Сумма перевода в минорах
+          minimum: 1
+
+    BalanceTransferResponse:
+      type: object
+      required:
+        - transaction
+      properties:
+        transaction:
+          $ref: '#/components/schemas/LedgerTransaction'
+
+    LedgerTransaction:
+      type: object
+      required:
+        - id
+        - entries
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        entries:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/LedgerEntry'
+        created_at:
+          type: string
+          format: date-time
+
+    LedgerEntry:
+      type: object
+      required:
+        - id
+        - wallet_id
+        - amount
+        - currency
+      properties:
+        id:
+          type: integer
+          format: int64
+        wallet_id:
+          type: integer
+          format: int64
+        amount:
+          type: integer
+          format: int64
+          description: Изменение баланса кошелька в минорах, отрицательное для списания и положительное для зачисления
+        currency:
+          type: string
+          enum: [USD, EUR]

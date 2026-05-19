@@ -1,4 +1,4 @@
-package repository
+package service
 
 import (
 	"context"
@@ -6,14 +6,12 @@ import (
 	"p2p_wallet/internal/domain"
 )
 
-type UserRepo interface {
-	Save(ctx context.Context, user *domain.User) (*domain.User, error)
-	GetByLogin(ctx context.Context, login string) (*domain.User, error)
-	GetByID(ctx context.Context, id domain.UserID) (*domain.User, error)
-}
-
 type WalletRepo interface {
 	Save(ctx context.Context, wallet *domain.Wallet) (*domain.Wallet, error)
 	FindByUserID(ctx context.Context, userID domain.UserID) ([]*domain.Wallet, error)
 	FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error)
+}
+
+type BalanceRepo interface {
+	CreateTransaction(ctx context.Context, transaction *domain.Transaction) (*domain.Transaction, error)
 }

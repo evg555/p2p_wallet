@@ -2,8 +2,6 @@ package domain
 
 var SessionKey = "session_id"
 
-type CtxKey string
-
 type AuthResult struct {
 	UserID       UserID
 	UserLogin    string

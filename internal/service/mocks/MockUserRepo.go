@@ -23,7 +23,7 @@ func (_m *MockUserRepo) EXPECT() *MockUserRepo_Expecter {
 }
 
 // GetByID provides a mock function with given fields: ctx, id
-func (_m *MockUserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
+func (_m *MockUserRepo) GetByID(ctx context.Context, id domain.UserID) (*domain.User, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
@@ -32,10 +32,10 @@ func (_m *MockUserRepo) GetByID(ctx context.Context, id int64) (*domain.User, er
 
 	var r0 *domain.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) (*domain.User, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, domain.UserID) (*domain.User, error)); ok {
 		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64) *domain.User); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, domain.UserID) *domain.User); ok {
 		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
@@ -43,7 +43,7 @@ func (_m *MockUserRepo) GetByID(ctx context.Context, id int64) (*domain.User, er
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, domain.UserID) error); ok {
 		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
@@ -59,14 +59,14 @@ type MockUserRepo_GetByID_Call struct {
 
 // GetByID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int64
+//   - id domain.UserID
 func (_e *MockUserRepo_Expecter) GetByID(ctx interface{}, id interface{}) *MockUserRepo_GetByID_Call {
 	return &MockUserRepo_GetByID_Call{Call: _e.mock.On("GetByID", ctx, id)}
 }
 
-func (_c *MockUserRepo_GetByID_Call) Run(run func(ctx context.Context, id int64)) *MockUserRepo_GetByID_Call {
+func (_c *MockUserRepo_GetByID_Call) Run(run func(ctx context.Context, id domain.UserID)) *MockUserRepo_GetByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
+		run(args[0].(context.Context), args[1].(domain.UserID))
 	})
 	return _c
 }
@@ -76,7 +76,7 @@ func (_c *MockUserRepo_GetByID_Call) Return(_a0 *domain.User, _a1 error) *MockUs
 	return _c
 }
 
-func (_c *MockUserRepo_GetByID_Call) RunAndReturn(run func(context.Context, int64) (*domain.User, error)) *MockUserRepo_GetByID_Call {
+func (_c *MockUserRepo_GetByID_Call) RunAndReturn(run func(context.Context, domain.UserID) (*domain.User, error)) *MockUserRepo_GetByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

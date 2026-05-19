@@ -9,7 +9,10 @@ import (
 	"p2p_wallet/internal/infra/cache"
 )
 
-const walletListTTL = time.Hour
+const (
+	walletListTTL = time.Hour
+	walletByIDTTL = time.Hour
+)
 
 type cachedWalletRepo struct {
 	next  WalletRepo
@@ -30,6 +33,7 @@ func (r *cachedWalletRepo) Save(ctx context.Context, wallet *domain.Wallet) (*do
 	}
 
 	r.cache.Delete(walletListCacheKey(savedWallet.UserID))
+	r.cache.Delete(walletByIDCacheKey(savedWallet.ID))
 
 	return savedWallet, nil
 }
@@ -55,6 +59,31 @@ func (r *cachedWalletRepo) FindByUserID(ctx context.Context, userID domain.UserI
 	return wallets, nil
 }
 
+func (r *cachedWalletRepo) FindByID(ctx context.Context, id domain.WalletID) (*domain.Wallet, error) {
+	val, ok := r.cache.Get(walletByIDCacheKey(id))
+	if ok {
+		wallet, ok := val.(*domain.Wallet)
+		if !ok {
+			return nil, fmt.Errorf("wallet by id cache: %w", errWrongType)
+		}
+
+		return wallet, nil
+	}
+
+	wallet, err := r.next.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	r.cache.SetWithTTL(walletByIDCacheKey(id), wallet, walletByIDTTL)
+
+	return wallet, nil
+}
+
 func walletListCacheKey(userID domain.UserID) string {
 	return fmt.Sprintf("wallets:user:%d", userID)
+}
+
+func walletByIDCacheKey(id domain.WalletID) string {
+	return fmt.Sprintf("wallet:id:%d", id)
 }
