@@ -15,13 +15,13 @@ type Session struct {
 }
 
 func NewSession(userID UserID, ttl time.Duration) *Session {
-	now := time.Now()
+	now := time.Now().UTC()
 
 	return &Session{
 		ID:        NewSessionID(),
 		UserID:    userID,
 		CreatedAt: now,
-		ExpiresAt: time.Now().Add(ttl),
+		ExpiresAt: now.Add(ttl),
 	}
 }
 

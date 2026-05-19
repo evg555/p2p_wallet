@@ -45,7 +45,7 @@ func NewTransaction(idempKey string, amount int64, fromWallet *Wallet, toWallet 
 	transaction := &Transaction{
 		IdempotencyKey: idempKey,
 		Entries:        []Entry{entryFrom, entryTo},
-		CreatedAt:      time.Now(),
+		CreatedAt:      time.Now().UTC(),
 	}
 
 	return transaction, nil

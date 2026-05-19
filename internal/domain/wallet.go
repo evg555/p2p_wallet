@@ -46,7 +46,7 @@ func NewWallet(userID UserID, currency string) (*Wallet, error) {
 		UserID:    userID,
 		Currency:  newCurrency,
 		Status:    StatusActive,
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 	}, nil
 }
 

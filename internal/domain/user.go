@@ -36,7 +36,7 @@ func NewUser(login, password, firstName, lastName string) (*User, error) {
 		Login:     login,
 		FirstName: firstName,
 		LastName:  lastName,
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 	}
 
 	hash, err := encodePassword(password)
