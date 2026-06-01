@@ -76,6 +76,55 @@ func (w *walletPostgresRepo) Save(ctx context.Context, wallet *domain.Wallet) (*
 		return nil, fmt.Errorf("save wallet snapshot: %w", err)
 	}
 
+	accountsQuery, accountsArgs, err := psql.Insert("accounts").
+		Columns("wallet_id", "account_type", "currency", "status").
+		Values(savedWallet.ID, domain.TypeAvailable, savedWallet.Currency.String(), savedWallet.Status.String()).
+		Values(savedWallet.ID, domain.TypeHeld, savedWallet.Currency.String(), savedWallet.Status.String()).
+		Suffix("RETURNING id, account_type, status, created_at, updated_at").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build save wallet accounts query: %w", err)
+	}
+
+	rows, err := tx.Query(ctx, accountsQuery, accountsArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("save wallet accounts: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			accountType string
+			status      string
+			account     domain.Account
+		)
+
+		if err = rows.Scan(&account.ID, &accountType, &status, &account.CreatedAt, &account.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan saved wallet account: %w", err)
+		}
+
+		account.Currency = savedWallet.Currency
+		account.Status, err = newWalletStatus(status)
+		if err != nil {
+			return nil, fmt.Errorf("parse saved wallet account status: %w", err)
+		}
+
+		switch domain.AccountType(accountType) {
+		case domain.TypeAvailable:
+			account.Type = domain.TypeAvailable
+			savedWallet.Accounts.Available = account
+		case domain.TypeHeld:
+			account.Type = domain.TypeHeld
+			savedWallet.Accounts.Held = account
+		default:
+			return nil, fmt.Errorf("unknown saved wallet account type: %s", accountType)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate saved wallet accounts: %w", err)
+	}
+
 	if err = tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit wallet save transaction: %w", err)
 	}
@@ -91,12 +140,22 @@ func (w *walletPostgresRepo) FindByUserID(ctx context.Context, userID domain.Use
 			"w.currency",
 			"w.status",
 			"w.user_id",
+			"aa.id",
+			"aa.status",
+			"aa.created_at",
+			"aa.updated_at",
+			"ah.id",
+			"ah.status",
+			"ah.created_at",
+			"ah.updated_at",
 			"s.total_amount",
 			"s.held_amount",
 			"w.created_at",
 			"s.updated_at",
 		).
 		From("wallets w").
+		Join("accounts aa ON aa.wallet_id = w.id AND aa.account_type = 'available' AND aa.currency = w.currency").
+		Join("accounts ah ON ah.wallet_id = w.id AND ah.account_type = 'held' AND ah.currency = w.currency").
 		Join("wallet_balance_snapshots s ON s.wallet_id = w.id").
 		Where(sq.Eq{"w.user_id": userID}).
 		OrderBy("w.id ASC").
@@ -114,9 +173,11 @@ func (w *walletPostgresRepo) FindByUserID(ctx context.Context, userID domain.Use
 	wallets := make([]*domain.Wallet, 0)
 	for rows.Next() {
 		var (
-			currency string
-			status   string
-			wallet   domain.Wallet
+			currency        string
+			status          string
+			availableStatus string
+			heldStatus      string
+			wallet          domain.Wallet
 		)
 
 		if err = rows.Scan(
@@ -124,6 +185,14 @@ func (w *walletPostgresRepo) FindByUserID(ctx context.Context, userID domain.Use
 			&currency,
 			&status,
 			&wallet.UserID,
+			&wallet.Accounts.Available.ID,
+			&availableStatus,
+			&wallet.Accounts.Available.CreatedAt,
+			&wallet.Accounts.Available.UpdatedAt,
+			&wallet.Accounts.Held.ID,
+			&heldStatus,
+			&wallet.Accounts.Held.CreatedAt,
+			&wallet.Accounts.Held.UpdatedAt,
 			&wallet.TotalAmount,
 			&wallet.HeldAmount,
 			&wallet.CreatedAt,
@@ -140,6 +209,20 @@ func (w *walletPostgresRepo) FindByUserID(ctx context.Context, userID domain.Use
 		wallet.Status, err = newWalletStatus(status)
 		if err != nil {
 			return nil, fmt.Errorf("parse wallet status: %w", err)
+		}
+
+		wallet.Accounts.Available.Type = domain.TypeAvailable
+		wallet.Accounts.Available.Currency = wallet.Currency
+		wallet.Accounts.Available.Status, err = newWalletStatus(availableStatus)
+		if err != nil {
+			return nil, fmt.Errorf("parse available account status: %w", err)
+		}
+
+		wallet.Accounts.Held.Type = domain.TypeHeld
+		wallet.Accounts.Held.Currency = wallet.Currency
+		wallet.Accounts.Held.Status, err = newWalletStatus(heldStatus)
+		if err != nil {
+			return nil, fmt.Errorf("parse held account status: %w", err)
 		}
 
 		wallets = append(wallets, &wallet)
@@ -160,12 +243,22 @@ func (w *walletPostgresRepo) FindByID(ctx context.Context, id domain.WalletID) (
 			"w.currency",
 			"w.status",
 			"w.user_id",
+			"aa.id",
+			"aa.status",
+			"aa.created_at",
+			"aa.updated_at",
+			"ah.id",
+			"ah.status",
+			"ah.created_at",
+			"ah.updated_at",
 			"s.total_amount",
 			"s.held_amount",
 			"w.created_at",
 			"s.updated_at",
 		).
 		From("wallets w").
+		Join("accounts aa ON aa.wallet_id = w.id AND aa.account_type = 'available' AND aa.currency = w.currency").
+		Join("accounts ah ON ah.wallet_id = w.id AND ah.account_type = 'held' AND ah.currency = w.currency").
 		Join("wallet_balance_snapshots s ON s.wallet_id = w.id").
 		Where(sq.Eq{"w.id": id}).
 		ToSql()
@@ -174,9 +267,11 @@ func (w *walletPostgresRepo) FindByID(ctx context.Context, id domain.WalletID) (
 	}
 
 	var (
-		currency string
-		status   string
-		wallet   domain.Wallet
+		currency        string
+		status          string
+		availableStatus string
+		heldStatus      string
+		wallet          domain.Wallet
 	)
 
 	err = w.client.QueryRow(ctx, query, args...).Scan(
@@ -184,6 +279,14 @@ func (w *walletPostgresRepo) FindByID(ctx context.Context, id domain.WalletID) (
 		&currency,
 		&status,
 		&wallet.UserID,
+		&wallet.Accounts.Available.ID,
+		&availableStatus,
+		&wallet.Accounts.Available.CreatedAt,
+		&wallet.Accounts.Available.UpdatedAt,
+		&wallet.Accounts.Held.ID,
+		&heldStatus,
+		&wallet.Accounts.Held.CreatedAt,
+		&wallet.Accounts.Held.UpdatedAt,
 		&wallet.TotalAmount,
 		&wallet.HeldAmount,
 		&wallet.CreatedAt,
@@ -204,6 +307,20 @@ func (w *walletPostgresRepo) FindByID(ctx context.Context, id domain.WalletID) (
 	wallet.Status, err = newWalletStatus(status)
 	if err != nil {
 		return nil, fmt.Errorf("parse wallet status: %w", err)
+	}
+
+	wallet.Accounts.Available.Type = domain.TypeAvailable
+	wallet.Accounts.Available.Currency = wallet.Currency
+	wallet.Accounts.Available.Status, err = newWalletStatus(availableStatus)
+	if err != nil {
+		return nil, fmt.Errorf("parse available account status: %w", err)
+	}
+
+	wallet.Accounts.Held.Type = domain.TypeHeld
+	wallet.Accounts.Held.Currency = wallet.Currency
+	wallet.Accounts.Held.Status, err = newWalletStatus(heldStatus)
+	if err != nil {
+		return nil, fmt.Errorf("parse held account status: %w", err)
 	}
 
 	return &wallet, nil

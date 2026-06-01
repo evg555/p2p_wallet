@@ -82,8 +82,8 @@ func (b *balancePostgresRepo) CreateTransaction(ctx context.Context, transaction
 
 	entryFrom := savedTransaction.Entries[0]
 	query, args, err = psql.Insert("ledger_entries").
-		Columns("transaction_id", "wallet_id", "amount", "currency").
-		Values(savedTransaction.ID, entryFrom.WalletID, entryFrom.Money.Amount(), entryFrom.Money.Currency()).
+		Columns("transaction_id", "account_id", "amount", "currency").
+		Values(savedTransaction.ID, entryFrom.Account.ID, entryFrom.Money.Amount(), entryFrom.Money.Currency()).
 		Suffix("RETURNING id").
 		ToSql()
 	if err != nil {
@@ -92,6 +92,7 @@ func (b *balancePostgresRepo) CreateTransaction(ctx context.Context, transaction
 
 	savedEntryFrom := &domain.Entry{
 		WalletID: entryFrom.WalletID,
+		Account:  entryFrom.Account,
 		Money:    entryFrom.Money,
 	}
 
@@ -102,8 +103,8 @@ func (b *balancePostgresRepo) CreateTransaction(ctx context.Context, transaction
 
 	entryTo := savedTransaction.Entries[1]
 	query, args, err = psql.Insert("ledger_entries").
-		Columns("transaction_id", "wallet_id", "amount", "currency").
-		Values(savedTransaction.ID, entryTo.WalletID, entryTo.Money.Amount(), entryTo.Money.Currency()).
+		Columns("transaction_id", "account_id", "amount", "currency").
+		Values(savedTransaction.ID, entryTo.Account.ID, entryTo.Money.Amount(), entryTo.Money.Currency()).
 		Suffix("RETURNING id").
 		ToSql()
 	if err != nil {
@@ -112,6 +113,7 @@ func (b *balancePostgresRepo) CreateTransaction(ctx context.Context, transaction
 
 	savedEntryTo := &domain.Entry{
 		WalletID: entryTo.WalletID,
+		Account:  entryTo.Account,
 		Money:    entryTo.Money,
 	}
 
@@ -150,9 +152,10 @@ func (b *balancePostgresRepo) CreateTransaction(ctx context.Context, transaction
 func (b *balancePostgresRepo) getTransactionByIdempotencyKey(ctx context.Context, idempotencyKey string) (*domain.Transaction, error) {
 	rows, err := b.client.Query(
 		ctx,
-		`SELECT lt.id, lt.created_at, le.id, le.wallet_id, le.amount, le.currency
+		`SELECT lt.id, lt.created_at, le.id, a.wallet_id, le.account_id, a.account_type, a.status, a.created_at, a.updated_at, le.amount, le.currency
 		FROM ledger_transactions lt
 		JOIN ledger_entries le ON le.transaction_id = lt.id
+		JOIN accounts a ON a.id = le.account_id
 		WHERE lt.idemp_key = $1
 		ORDER BY le.id ASC`,
 		idempotencyKey,
@@ -165,15 +168,32 @@ func (b *balancePostgresRepo) getTransactionByIdempotencyKey(ctx context.Context
 	var transaction *domain.Transaction
 	for rows.Next() {
 		var (
-			entryID       int64
-			walletID      int64
-			amount        int64
-			currency      string
-			transactionID int64
-			createdAt     time.Time
+			entryID        int64
+			walletID       int64
+			accountID      int64
+			accountType    string
+			accountStatus  string
+			accountCreated time.Time
+			accountUpdated *time.Time
+			amount         int64
+			currency       string
+			transactionID  int64
+			createdAt      time.Time
 		)
 
-		if err = rows.Scan(&transactionID, &createdAt, &entryID, &walletID, &amount, &currency); err != nil {
+		if err = rows.Scan(
+			&transactionID,
+			&createdAt,
+			&entryID,
+			&walletID,
+			&accountID,
+			&accountType,
+			&accountStatus,
+			&accountCreated,
+			&accountUpdated,
+			&amount,
+			&currency,
+		); err != nil {
 			return nil, fmt.Errorf("scan transaction by idempotency key: %w", err)
 		}
 
@@ -190,10 +210,23 @@ func (b *balancePostgresRepo) getTransactionByIdempotencyKey(ctx context.Context
 			return nil, fmt.Errorf("parse transaction currency: %w", currencyErr)
 		}
 
+		entryAccountStatus, statusErr := newWalletStatus(accountStatus)
+		if statusErr != nil {
+			return nil, fmt.Errorf("parse transaction account status: %w", statusErr)
+		}
+
 		transaction.Entries = append(transaction.Entries, domain.Entry{
 			ID:       entryID,
 			WalletID: domain.WalletID(walletID),
-			Money:    domain.NewMoney(amount, entryCurrency),
+			Account: domain.Account{
+				ID:        domain.AccountID(accountID),
+				Type:      domain.AccountType(accountType),
+				Currency:  entryCurrency,
+				Status:    entryAccountStatus,
+				CreatedAt: accountCreated,
+				UpdatedAt: accountUpdated,
+			},
+			Money: domain.NewMoney(amount, entryCurrency),
 		})
 	}
 

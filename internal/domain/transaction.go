@@ -21,6 +21,7 @@ type Transaction struct {
 type Entry struct {
 	ID       int64
 	WalletID WalletID
+	Account  Account
 	Money    Money
 }
 
@@ -34,11 +35,13 @@ func NewTransaction(idempKey string, amount int64, fromWallet *Wallet, toWallet 
 
 	entryFrom := Entry{
 		WalletID: fromWallet.ID,
+		Account:  fromWallet.Accounts.Available,
 		Money:    money.Invert(),
 	}
 
 	entryTo := Entry{
 		WalletID: toWallet.ID,
+		Account:  toWallet.Accounts.Available,
 		Money:    money,
 	}
 

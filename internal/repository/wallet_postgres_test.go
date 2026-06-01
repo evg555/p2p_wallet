@@ -31,6 +31,24 @@ func TestWalletPostgresRepoSave(t *testing.T) {
 	require.False(t, saved.CreatedAt.IsZero())
 	require.Nil(t, saved.UpdatedAt)
 
+	rows, err := userRepo.client.Query(
+		ctx,
+		"SELECT account_type FROM accounts WHERE wallet_id = $1 ORDER BY account_type ASC",
+		saved.ID,
+	)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var accountTypes []string
+	for rows.Next() {
+		var accountType string
+		err = rows.Scan(&accountType)
+		require.NoError(t, err)
+		accountTypes = append(accountTypes, accountType)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []string{string(domain.TypeAvailable), string(domain.TypeHeld)}, accountTypes)
+
 	duplicateInput, err := domain.NewWallet(user.ID, "USD")
 	require.NoError(t, err)
 
@@ -66,6 +84,16 @@ func TestWalletPostgresRepoFindByUserID(t *testing.T) {
 		require.Equal(t, savedUSD.Currency, got[0].Currency)
 		require.Equal(t, savedUSD.Status, got[0].Status)
 		require.Equal(t, savedUSD.UserID, got[0].UserID)
+		require.Positive(t, got[0].Accounts.Available.ID)
+		require.Equal(t, domain.TypeAvailable, got[0].Accounts.Available.Type)
+		require.Equal(t, got[0].Currency, got[0].Accounts.Available.Currency)
+		require.Equal(t, got[0].Status, got[0].Accounts.Available.Status)
+		require.False(t, got[0].Accounts.Available.CreatedAt.IsZero())
+		require.Positive(t, got[0].Accounts.Held.ID)
+		require.Equal(t, domain.TypeHeld, got[0].Accounts.Held.Type)
+		require.Equal(t, got[0].Currency, got[0].Accounts.Held.Currency)
+		require.Equal(t, got[0].Status, got[0].Accounts.Held.Status)
+		require.False(t, got[0].Accounts.Held.CreatedAt.IsZero())
 		require.Zero(t, got[0].TotalAmount)
 		require.Zero(t, got[0].HeldAmount)
 		require.False(t, got[0].CreatedAt.IsZero())
@@ -75,6 +103,16 @@ func TestWalletPostgresRepoFindByUserID(t *testing.T) {
 		require.Equal(t, savedEUR.Currency, got[1].Currency)
 		require.Equal(t, savedEUR.Status, got[1].Status)
 		require.Equal(t, savedEUR.UserID, got[1].UserID)
+		require.Positive(t, got[1].Accounts.Available.ID)
+		require.Equal(t, domain.TypeAvailable, got[1].Accounts.Available.Type)
+		require.Equal(t, got[1].Currency, got[1].Accounts.Available.Currency)
+		require.Equal(t, got[1].Status, got[1].Accounts.Available.Status)
+		require.False(t, got[1].Accounts.Available.CreatedAt.IsZero())
+		require.Positive(t, got[1].Accounts.Held.ID)
+		require.Equal(t, domain.TypeHeld, got[1].Accounts.Held.Type)
+		require.Equal(t, got[1].Currency, got[1].Accounts.Held.Currency)
+		require.Equal(t, got[1].Status, got[1].Accounts.Held.Status)
+		require.False(t, got[1].Accounts.Held.CreatedAt.IsZero())
 		require.Zero(t, got[1].TotalAmount)
 		require.Zero(t, got[1].HeldAmount)
 		require.False(t, got[1].CreatedAt.IsZero())
@@ -111,6 +149,16 @@ func TestWalletPostgresRepoFindByID(t *testing.T) {
 		require.Equal(t, saved.Currency, got.Currency)
 		require.Equal(t, saved.Status, got.Status)
 		require.Equal(t, saved.UserID, got.UserID)
+		require.Positive(t, got.Accounts.Available.ID)
+		require.Equal(t, domain.TypeAvailable, got.Accounts.Available.Type)
+		require.Equal(t, got.Currency, got.Accounts.Available.Currency)
+		require.Equal(t, got.Status, got.Accounts.Available.Status)
+		require.False(t, got.Accounts.Available.CreatedAt.IsZero())
+		require.Positive(t, got.Accounts.Held.ID)
+		require.Equal(t, domain.TypeHeld, got.Accounts.Held.Type)
+		require.Equal(t, got.Currency, got.Accounts.Held.Currency)
+		require.Equal(t, got.Status, got.Accounts.Held.Status)
+		require.False(t, got.Accounts.Held.CreatedAt.IsZero())
 		require.Zero(t, got.TotalAmount)
 		require.Zero(t, got.HeldAmount)
 		require.False(t, got.CreatedAt.IsZero())

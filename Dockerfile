@@ -12,17 +12,17 @@ ARG COMMIT_SHA=unknown
 ARG BUILD_TIME=unknown
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags "-s -w -X main.VERSION=${VERSION} -X main.COMMIT_SHA=${COMMIT_SHA} -X main.BUILD_TIME=${BUILD_TIME}" \
-    -o /out/auth ./cmd/auth
+    -o /out/p2p_wallet ./cmd/p2p_wallet/main.go
 
 FROM alpine:3.22 AS runtime
 WORKDIR /app
 
 RUN adduser -D -u 10001 appuser
 
-COPY --from=builder /out/auth .
+COPY --from=builder /out/p2p_wallet .
 COPY spec/openapi/p2p-wallet.yaml ./spec/openapi/p2p-wallet.yaml
 
 USER appuser
 EXPOSE 8080
 
-CMD ["./auth"]
+CMD ["./p2p_wallet"]

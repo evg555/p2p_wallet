@@ -30,10 +30,16 @@ type Wallet struct {
 	Currency    Currency
 	Status      WalletStatus
 	UserID      UserID
+	Accounts    WalletAccounts
 	TotalAmount int64
 	HeldAmount  int64
 	CreatedAt   time.Time
 	UpdatedAt   *time.Time
+}
+
+type WalletAccounts struct {
+	Available Account
+	Held      Account
 }
 
 func NewWallet(userID UserID, currency string) (*Wallet, error) {
